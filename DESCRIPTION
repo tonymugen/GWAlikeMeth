@@ -1,0 +1,11 @@
+Package: GWAlikeMeth
+Type: Package
+Title: Likelihood methods for GWA
+Version: 1.0
+Date: 2018-12-19
+Author: Tony Greenberg
+Maintainer: Tony Greenberg <info@bayesicresearch.org>
+Description: Efficient likelihood methods for genome-wide associations, including mixed models and multithreading.
+License: BSD-3-Clause
+Imports: Rcpp (>= 1.0.0)
+LinkingTo: Rcpp

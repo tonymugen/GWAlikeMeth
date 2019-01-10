@@ -1,0 +1,3 @@
+useDynLib(GWAlikeMeth, .registration=TRUE)
+exportPattern("^[[:alpha:]]+")
+importFrom(Rcpp, evalCpp)
