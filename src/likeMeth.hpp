@@ -1,14 +1,26 @@
-//
-//  likeMeth.hpp
-//  QuaGen
-//
-//  Created by Tony Mugen on 3/29/17.
-//
+/*
+ * Copyright (c) 2019 Anthony J. Greenberg
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /// Likelihood methods for quantitative genetics
 /** \file
  * \author Anthony J. Greenberg
- * \copyright Copyright (c) 2017 Anthony J. Greenberg
+ * \copyright Copyright (c) 2019 Anthony J. Greenberg
  * \version 0.1
  *
  * This is the project header file containing class definitions and interface documentation.
@@ -26,6 +38,7 @@ using std::vector;
 using locMatrix::Matrix;
 
 class EmmREML;
+class MixedModel;
 class SNPblock;
 
 /** \brief Solve a mixed model with no fixed effect covariates
@@ -87,18 +100,10 @@ void snpReg(const Matrix &Y, const int *snp, const int &misTok, double *lPval);
  *
  */
 class EmmREML {
-private:
-	/// \f$\eta^2\f$ from Kang _et al_ equation (7). Points to a Matrix object with each trait as a column.
-	const Matrix *_etaSq;
-	/// \f$\lambda\f$ from Kang _et al_ equation (7). Points to a vector of eigenvalues.
-	const vector<double> *_lambda;
-	/// column ID of the etaSq matrix
-	size_t _jCol;
-
 public:
 
 	/// Default constructor
-	EmmREML() : _etaSq(nullptr), _lambda(nullptr), _jCol(0) {};
+	EmmREML() : etaSq_(nullptr), lambda_(nullptr), jCol_(0) {};
 	/** \brief Constructor
 	 *
 	 * Sets up the object.
@@ -108,10 +113,10 @@ public:
 	 * \param[in] jCol phenotype column index
 	 *
 	 */
-	EmmREML(const Matrix &etaSq, const vector<double> &lambda, const size_t &jCol) : _etaSq(&etaSq), _lambda(&lambda), _jCol(jCol) {};
+	EmmREML(const Matrix &etaSq, const vector<double> &lambda, const size_t &jCol) : etaSq_(&etaSq), lambda_(&lambda), jCol_(jCol) {};
 
 	/// Destructor
-	~EmmREML(){_etaSq = nullptr; _lambda = nullptr; };
+	~EmmREML(){etaSq_ = nullptr; lambda_ = nullptr; };
 
 	/// Copy constructor (not implemented)
 	EmmREML(const EmmREML &) = delete;
@@ -132,31 +137,30 @@ public:
 	 *
 	 *\param[in] j column index
 	 */
-	void setColID(const size_t &j) {_jCol = j; };
+	void setColID(const size_t &j) {jCol_ = j; };
+private:
+	/// \f$\eta^2\f$ from Kang _et al_ equation (7). Points to a Matrix object with each trait as a column.
+	const Matrix *etaSq_;
+	/// \f$\lambda\f$ from Kang _et al_ equation (7). Points to a vector of eigenvalues.
+	const vector<double> *lambda_;
+	/// column ID of the etaSq matrix
+	size_t jCol_;
+
 
 };
+class MixedModel {
+
+}
 
 /** \brief A SNP block functor class
  *
- * A class to facilitate GWA multithreading. Points to a block of SNPs and runs _snpReg()_ on each locus.
+ * A class to facilitate GWA multithreading. Points to a block of SNPs and runs snp_Reg()_ on each locus.
  *
  */
 class SNPblock {
-private:
-	/// Pointer to the response matrix
-	const Matrix *_rsp;
-	/// Pointer to the SNP array
-	const int *_snp;
-	/// Pointer to the \f$-\log_{10}p\f$ array (the results)
-	double *_lPval;
-	/// Number of SNPs in a block
-	size_t _blockSize;
-	/// Start position of the block in the SNP array
-	size_t _blockStart;
-
 public:
 	/// Default constructor
-	SNPblock() : _rsp(nullptr), _snp(nullptr), _lPval(nullptr), _blockSize(0) {};
+	SNPblock() : rsp_(nullptr), snp_(nullptr), lPval_(nullptr), blockSize_(0) {};
 	/** \brief Constructor
 	 *
 	 * Sets up the pointers to the data and results objects
@@ -168,17 +172,17 @@ public:
 	 * \param[out] lpvArr pointer to the array where the \f$-\log_{10}p\f$ are stored
 	 *
 	 */
-	SNPblock(const Matrix &rsp, const int *snpArr, const size_t &bStart, const size_t &bSize, double *lpvArr): _rsp(&rsp), _snp(snpArr), _blockSize(bSize), _blockStart(bStart), _lPval(lpvArr) {};
+	SNPblock(const Matrix &rsp, const int *snpArr, const size_t &bStart, const size_t &bSize, double *lpvArr): rsp_(&rsp), snp_(snpArr), blockSize_(bSize), blockStart_(bStart), lPval_(lpvArr) {};
 
 	/// Destructor
-	~SNPblock(){ _rsp = nullptr; _snp = nullptr; _lPval = nullptr; };
+	~SNPblock(){ rsp_ = nullptr; snp_ = nullptr; lPval_ = nullptr; };
 
 	/// Copy constructor (not implemented)
 	SNPblock(const SNPblock &) = delete;
 	/// Copy assignment operator (not implemented)
 	SNPblock & operator=(const SNPblock &) = delete;
 	/// Move constructor
-	SNPblock(SNPblock &&in) : _rsp(in._rsp), _snp(in._snp), _lPval(in._lPval), _blockSize(in._blockSize), _blockStart(in._blockStart) { in._rsp = nullptr; in._snp = nullptr; in._lPval = nullptr; };
+	SNPblock(SNPblock &&in) : rsp_(in.rsp_), snp_(in.snp_), lPval_(in.lPval_), blockSize_(in.blockSize_), blockStart_(in.blockStart_) { in.rsp_ = nullptr; in.snp_ = nullptr; in.lPval_ = nullptr; };
 
 	/** \brief Function operator
 	 *
@@ -186,6 +190,18 @@ public:
 	 *
 	 */
 	void operator()();
+private:
+	/// Pointer to the response matrix
+	const Matrix *rsp_;
+	/// Pointer to the SNP array
+	const int *snp_;
+	/// Pointer to the \f$-\log_{10}p\f$ array (the results)
+	double *lPval_;
+	/// Number of SNPs in a block
+	size_t blockSize_;
+	/// Start position of the block in the SNP array
+	size_t blockStart_;
+
 };
 
 

@@ -1,14 +1,27 @@
-//
-//  likeMeth.cpp
-//  QuaGen
-//
-//  Created by Tony Mugen on 3/29/17.
-//
+/*
+ * Copyright (c) 2019 Anthony J. Greenberg
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 
 /// Likelihood methods for quantitative genetics
 /** \file
  * \author Anthony J. Greenberg
- * \copyright Copyright (c) 2017 Anthony J. Greenberg
+ * \copyright Copyright (c) 2019 Anthony J. Greenberg
  * \version 0.1
  *
  * This is the file containing function implementations.
@@ -32,24 +45,24 @@ double EmmREML::operator()(const double &delta){
 	double frac = 0.0; // the log(Sum(eta^2/(lambda + delta))) component
 	double llam = 0.0; // the Sum(log(lambda + delta))
 	double ld;
-	for (size_t s = 0; s < _etaSq->getNrows(); s++) {
-		ld    = (*_lambda)[s] + delta;
-		frac += _etaSq->getElem(s, _jCol)/ld;
+	for (size_t s = 0; s < etaSq_->getNrows(); s++) {
+		ld    = (*lambda_)[s] + delta;
+		frac += etaSq_->getElem(s, jCol_)/ld;
 		llam += log(ld);
 	}
 	// final likelihood
-	double llik = -static_cast<double>(_lambda->size())*log(frac) - llam;
+	double llik = -static_cast<double>(lambda_->size())*log(frac) - llam;
 	return llik;
 
 }
 
 void SNPblock::operator()(){
-	const size_t Nrow = _rsp->getNrows();
-	const size_t Ncol = _rsp->getNcols();
+	const size_t Nrow = rsp_->getNrows();
+	const size_t Ncol = rsp_->getNcols();
 
 
-	for (size_t kSNP = _blockStart; kSNP < _blockStart + _blockSize; kSNP++) {
-		snpReg(*_rsp, _snp + kSNP*Nrow, -9, _lPval + kSNP*Ncol);
+	for (size_t kSNP = blockStart_; kSNP < blockStart_ + blockSize_; kSNP++) {
+		snpReg(*rsp_, snp_ + kSNP*Nrow, -9, lPval_ + kSNP*Ncol);
 	}
 }
 

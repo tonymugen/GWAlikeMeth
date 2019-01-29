@@ -449,7 +449,7 @@ double betacf(const double &x, const double &a, const double &b){
 	return cFrac;
 }
 
-/** \brief Regularized incolmplete Beta function
+/** \brief Regularized incomplete Beta function
  *
  * Computes a quadrature approximatino of the regularized incomplete Beta function following the method in Numerical Recipes in C++. To be used in the _betai_ function.
  *
