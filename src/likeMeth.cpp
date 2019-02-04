@@ -338,4 +338,203 @@ void snpReg(const Matrix &Y, const int *snp, const int &misTok, double *lPval){
 
 }
 
+// MixedModel methods
+
+MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &repFac, const size_t &d, const size_t &Ngen, const size_t &N) : Y_{Matrix(yvec, N, d)}, K_{Matrix(kvec, Ngen, Ngen)}, Z_{Matrix(repFac, N, Ngen)} {
+	Matrix ZKZt(K_);
+	vector<double> mu;
+	double invN = -1.0/static_cast<double>(Z_.getNrows());
+	Matrix S(invN, Z_.getNrows(), Z_.getNrows());
+	for (size_t i = 0; i < Z_.getNrows(); i++) {
+		S.setElem(i, i, 1.0 + invN);
+	}
+
+	// make ZKZ'; it is a symmetric matrix
+	ZKZt.premultZ(Z_);
+	// will need ZK for calculating BLUPs; save it
+	Matrix ZK(ZKZt);
+	ZKZt.postmultZt(Z_);
+	double offset = log(static_cast<double>(ZKZt.getNrows()));
+	for (size_t ii = 0; ii < ZKZt.getNrows(); ii++) {
+		double tmp = ZKZt.getElem(ii, ii) + offset;
+		ZKZt.setElem(ii, ii, tmp);
+	}
+
+	Matrix SHS; // SHS matrix (equation 5 of Kang et al.)
+	S.symm('l', 'r', 1.0, ZKZt, 0.0, SHS);
+	SHS.symm('l', 'r', 1.0, S, 0.0, u_); // u is now SHS
+
+	vector<double> lam;
+	S.resize(1, 1);
+	u_.eigen('l', u_.getNcols() - 1, S, lam); // S now U(SHS)
+
+	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
+		if ((*lamIt) - offset <= 1e-10) {
+			(*lamIt) = 0.0;
+		} else {
+			(*lamIt) -= offset;
+		}
+
+	}
+
+	Matrix Eta;
+	Y_.gemm(true, 1.0, S, false, 0.0, Eta); // U'Y
+
+	for (size_t iRow = 0; iRow < Eta.getNrows(); iRow++) {
+		for (size_t jCol = 0; jCol < Eta.getNcols(); jCol++) {
+			Eta.setElem(iRow, jCol, pow2(Eta.getElem(iRow, jCol)));
+		}
+	}
+
+	EmmREML reml(Eta, lam, 0);
+	SHS = Y_; // replace SHS with Y. SHS will be modified in the loop
+	vector<double> XtH(ZKZt.getNrows());
+	for (size_t ii = 0; ii < ZKZt.getNrows(); ii++) {
+		ZKZt.setElem(ii, ii, ZKZt.getElem(ii, ii) - offset);
+	}
+
+	for (size_t jCol = 0; jCol < Y_.getNcols(); jCol++) {
+		reml.setColID(jCol);
+		double deltaOpt = 0.0;
+		double fMax     = 0.0;
+		maximizer(reml, 1e-6, deltaOpt, fMax);
+
+		u_ = ZKZt; // replacing Zu with ZKZ'
+		for (size_t ii = 0; ii < u_.getNrows(); ii++) {
+			u_.setElem(ii, ii, ZKZt.getElem(ii, ii) + deltaOpt);
+		}
+		u_.chol();
+		u_.cholInv();         // now H^{-1}
+		u_.colSums(XtH);      // X'H^{-1}, since X is a column of 1s (intercept)
+		double XtHX    = 0.0; // X'H^{-1}X
+		double betaLoc = 0.0;
+		for (size_t iRow = 0; iRow < Y_.getNrows(); iRow++) {
+			XtHX    += XtH[iRow];
+			betaLoc += Y_.getElem(iRow, jCol) * XtH[iRow];
+		}
+
+		betaLoc /= XtHX;
+		mu.push_back(betaLoc);
+
+		SHS.colSub(betaLoc, jCol);
+		u_.gemc(false, 1.0, SHS, jCol, 0.0, XtH);
+		SHS.setCol(jCol, XtH);
+
+	}
+	SHS.gemm(true, 1.0, ZK, false, 0.0, u_); // replacing Zu with matrix of u
+
+
+}
+
+MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N) : Y_{Matrix(yvec, N, d)}, K_{Matrix(kvec, Ngen, Ngen)}, Z_{Matrix(repFac, N, Ngen)}, X_{Matrix(xvec, N, xvec.size()/N)} {
+
+	if (X_.getNcols() >= X_.getNrows()) {
+		throw string("ERROR: covariate matrix X_ in MixedModel constructor is not full rank");
+	}
+	if ( (beta_.getNcols() != Y_.getNcols()) || (beta_.getNrows() != (X_.getNcols() + 1)) ) {
+		beta_.resize(X_.getNcols() + 1, Y_.getNcols());
+	}
+	// add the intercept column to X
+	Matrix XwIcpt(1.0, X_.getNrows(), 1);
+	XwIcpt.appendCol(X_);
+	if (XwIcpt.getNrows() == K_.getNrows()) {
+		XwIcpt.premultZ(Z_);
+	} else if (XwIcpt.getNrows() != Y_.getNrows()) {
+		throw string("ERROR: number of rows in X not equal to number of lines or number of data points");
+	}
+	Matrix S;
+	XwIcpt.syrk('l', 1.0, 0.0, S);              // S = X'X
+	S.chol();
+	S.cholInv();                                // S = (X'X)^-1
+	Matrix SHS;
+	XwIcpt.symm('l', 'r', 1.0, S, 0.0, SHS);    // SHS = X(X'X)^-1
+	XwIcpt.gemm(false, 1.0, SHS, true, 0.0, S); // S = SHS X' = X(X'X)^-1X'
+
+	// I - S; lower triangle only
+	for (size_t jCol = 0; jCol < S.getNcols(); jCol++) {
+		S.setElem(jCol, jCol, 1.0 - S.getElem(jCol, jCol));
+		for (size_t iRow = jCol+1; iRow < S.getNrows(); iRow++) {
+			S.setElem(iRow, jCol, -S.getElem(iRow, jCol));
+		}
+	}
+
+	Matrix ZKZt(K_);
+	// make ZKZ'; it is a symmetric matrix
+	ZKZt.premultZ(Z_);
+	// will need ZK for calculating BLUPs; save it
+	Matrix ZK(ZKZt);
+	ZKZt.postmultZt(Z_);
+	double offset = log(static_cast<double>(ZKZt.getNrows()));
+	for (size_t ii = 0; ii < ZKZt.getNrows(); ii++) {
+		double tmp = ZKZt.getElem(ii, ii) + offset;
+		ZKZt.setElem(ii, ii, tmp);
+	}
+
+	S.symm('l', 'r', 1.0, ZKZt, 0.0, SHS);
+	SHS.symm('l', 'r', 1.0, S, 0.0, u_); // u is now SHS
+
+	vector<double> lam;
+	S.resize(1, 1);
+	u_.eigen('l', u_.getNcols() - XwIcpt.getNcols(), S, lam); // S now U(SHS)
+
+	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
+		if ((*lamIt) - offset <= 1e-10) {
+			(*lamIt) = 0.0;
+		} else {
+			(*lamIt) -= offset;
+		}
+
+	}
+	Matrix Eta;
+	Y_.gemm(true, 1.0, S, false, 0.0, Eta); // U'Y
+
+	for (size_t iRow = 0; iRow < Eta.getNrows(); iRow++) {
+		for (size_t jCol = 0; jCol < Eta.getNcols(); jCol++) {
+			Eta.setElem(iRow, jCol, pow2(Eta.getElem(iRow, jCol)));
+		}
+	}
+
+	EmmREML reml(Eta, lam, 0);
+	SHS = Y_; // replace SHS with Y. SHS will be modified in the loop
+	for (size_t ii = 0; ii < ZKZt.getNrows(); ii++) {
+		ZKZt.setElem(ii, ii, ZKZt.getElem(ii, ii) - offset);
+	}
+	vector<double> betaHat;
+	Matrix xhx;  // X'H^{-1}X
+	for (size_t jCol = 0; jCol < Y_.getNcols(); jCol++) {
+		reml.setColID(jCol);
+		double deltaOpt = 0.0;
+		double fMax     = 0.0;
+		maximizer(reml, 1e-6, deltaOpt, fMax);
+
+		u_ = ZKZt; // replacing Zu with ZKZ'
+		for (size_t ii = 0; ii < u_.getNrows(); ii++) {
+			u_.setElem(ii, ii, ZKZt.getElem(ii, ii) + deltaOpt);
+		}
+		u_.chol();
+		u_.cholInv();          // now H^{-1}
+
+		XwIcpt.symm('l', 'l', 1.0, u_, 0.0, S);        // S now H^{-1}X
+		S.gemm(true, 1.0, XwIcpt, false, 0.0, xhx);    // xhx =  X'H^{-1}X
+		xhx.chol();
+		xhx.cholInv();                                 // xhx now (X'H^{-1}X)^{-1}
+		S.gemc(true, 1.0, Y_, jCol, 0.0, betaHat);     // betaHat = X'H^{-1}Y[,jCol]
+		beta_.setCol(jCol, betaHat);
+		xhx.symc('l', 1.0, beta_, jCol, 0.0, betaHat);  // betaHat = (X'H^{-1}X)^{-1}X'H^{-1}Y[,jCol]
+		beta_.setCol(jCol, betaHat);
+		XwIcpt.gemc(false, 1.0, beta_, jCol, 0.0, betaHat); // betaHat now Xbeta; length nrow(X)
+
+		for (size_t iRow = 0; iRow < Y_.getNrows(); iRow++) {
+			betaHat[iRow] = Y_.getElem(iRow, jCol) - betaHat[iRow];  // betaHat = y - Xbeta
+		}
+		SHS.setCol(jCol, betaHat);
+		betaHat.resize(0);                            // otherwise too long for gemc()
+		u_.gemc(false, 1.0, SHS, jCol, 0.0, betaHat); // H^{-1}(y - Xbeta)
+		SHS.setCol(jCol, betaHat);
+		betaHat.resize(0);                            // essential for proper re-use at the top of the loop
+	}
+	SHS.gemm(true, 1.0, ZK, false, 0.0, u_); // replacing Zu with matrix of u
+
+}
+
 

@@ -282,7 +282,7 @@ void Matrix::setCol(const size_t jCol, const vector<double> data){
 	}
 #endif
 	double *colBeg = data_ + jCol*Nrow_;
-	memcpy(colBeg, data.data(), (Nrow_)*sizeof(double));
+	memcpy(colBeg, data.data(), Nrow_*sizeof(double));
 
 }
 

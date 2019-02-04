@@ -25,7 +25,7 @@
  * \version 0.1
  *
  * R interface functions that perform GWA on replcated data. Fixed-effect covariates and missing SNP data are allowed. SNPs have to be coded as (0,1,2) with missing data marked as -9.
- * The implementation depends on C++-11. SNP regression is multi-threaded. Vectorized matrices can be passed directly from R, no trasition to row-major storage needed. 
+ * The implementation depends on C++-11. SNP regression is multi-threaded. Vectorized matrices can be passed directly from R, no trasition to row-major storage needed.
  * Multiple traits from the same experiment are treated at once, but the statistics are calculated independently (covariances effectively set to zero).
  *
  * To compile for linking from R, use

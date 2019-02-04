@@ -35,6 +35,7 @@
 #include "locMatrix.hpp"
 
 using std::vector;
+using std::move;
 using locMatrix::Matrix;
 
 class EmmREML;
@@ -148,9 +149,93 @@ private:
 
 
 };
-class MixedModel {
 
-}
+/** \brief Mixed model
+ *
+ * Constructors solve a mixed model given inputs. Public functions do GWA.
+ *
+ */
+class MixedModel {
+	public:
+		/** \brief Default constructor  */
+		MixedModel() : Y_{Matrix()}, K_{Matrix()}, Z_{Matrix()}, X_{Matrix()}, u_{Matrix()}, beta_{Matrix()}, delta_{0.0} {};
+		/** \brief Constructor with no fixed effect
+		 *
+		 * \param[in] yvec vectorized (by column) response matrix
+		 * \param[in] kvec vectorized relationship matrix
+		 * \param[in] repFac factor relating genotypes to replicates
+		 * \param[in] d number of traits
+		 * \param[in] Ngen number of genotypes
+		 * \param[in] N number of data points
+		 *
+		 */
+		MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &repFac, const size_t &d, const size_t &Ngen, const size_t &N);
+		/** \brief Constructor including a fixed effect
+		 *
+		 * \param[in] yvec vectorized (by column) response matrix
+		 * \param[in] kvec vectorized relationship matrix
+		 * \param[in] repFac factor relating genotypes to replicates
+		 * \param[in] xvec vectorized (by column) matrix of fixed effects
+		 * \param[in] d number of traits
+		 * \param[in] Ngen number of genotypes
+		 * \param[in] N number of data points
+		 *
+		 */
+		MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N);
+
+		/// Destructor
+		~MixedModel(){};
+
+		/// Copy constructor (not implemented)
+		MixedModel(const MixedModel &in) = delete;
+		/// Copy assignement (not implemented)
+		MixedModel & operator=(const MixedModel &in) = delete;
+		/** \brief Move constructor
+		 *
+		 * \param[in] in object to be moved
+		 */
+		MixedModel(MixedModel &&in) : Y_{move(in.Y_)}, K_{move(in.K_)}, Z_{move(in.Z_)}, X_{move(in.X_)}, u_{move(in.u_)}, delta_{in.delta_} {};
+		/** \brief Move assignment operator (not impplemented) */
+		MixedModel & operator=(MixedModel &&in) = delete;
+
+		/** \brief Access the random effects
+		 *
+		 * \param[out] u random effect matrix
+		 */
+		void ranef(Matrix &u) const;
+		/** \brief Access the fixed effects
+		 *
+		 * Returns empty matrix if there are no fixed effects.
+		 *
+		 * \param[out] beta fixed effect matrix
+		 */
+		void fixef(Matrix &beta) const;
+		/** \brief Marker heritability
+		 *
+		 * \return marker heritability \f$ h^2_\textsc{m} \f$
+		 */
+		double hSq() const { return 1.0/(1.0 + delta_); };
+	private:
+		/** \brief Responce matrix */
+		const Matrix Y_;
+		/** \brief Relationship matrix */
+		const Matrix K_;
+		/** \brief Design matrix */
+		const Matrix Z_;
+		/** brief Fixed effects matrix */
+		const Matrix X_;
+		/** \brief BLUP matrix */
+		Matrix u_;
+		/** \brief Fixed effect matrix */
+		Matrix beta_;
+		/** \brief Delta value
+		 *
+		 * \f$ \delta = \dfrac{\sigma^2_e}{\sigma^2_g}\f$
+		 *
+		 */
+		double delta_;
+
+};
 
 /** \brief A SNP block functor class
  *
@@ -160,7 +245,7 @@ class MixedModel {
 class SNPblock {
 public:
 	/// Default constructor
-	SNPblock() : rsp_(nullptr), snp_(nullptr), lPval_(nullptr), blockSize_(0) {};
+	SNPblock() : rsp_{nullptr}, snp_{nullptr}, lPval_{nullptr}, blockSize_{0} {};
 	/** \brief Constructor
 	 *
 	 * Sets up the pointers to the data and results objects
@@ -182,7 +267,7 @@ public:
 	/// Copy assignment operator (not implemented)
 	SNPblock & operator=(const SNPblock &) = delete;
 	/// Move constructor
-	SNPblock(SNPblock &&in) : rsp_(in.rsp_), snp_(in.snp_), lPval_(in.lPval_), blockSize_(in.blockSize_), blockStart_(in.blockStart_) { in.rsp_ = nullptr; in.snp_ = nullptr; in.lPval_ = nullptr; };
+	SNPblock(SNPblock &&in) : rsp_{move(in.rsp_)}, snp_{move(in.snp_)}, lPval_{move(in.lPval_)}, blockSize_{move(in.blockSize_)}, blockStart_{move(in.blockStart_)} { in.rsp_ = nullptr; in.snp_ = nullptr; in.lPval_ = nullptr; };
 
 	/** \brief Function operator
 	 *
