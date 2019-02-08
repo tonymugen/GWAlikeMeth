@@ -38,256 +38,255 @@ using std::vector;
 using std::move;
 using locMatrix::Matrix;
 
-class EmmREML;
-class MixedModel;
-class SNPblock;
-
-/** \brief Solve a mixed model with no fixed effect covariates
- *
- * Solves a mixed model
- *
- * \f$ Y = \mu + Zu + e \f$
- *
- * \f$ u \sim \textrm{N}\left(0, \sigma^2_gK \right)\f$
- *
- * for each trait in the trait matrix \f$Y\f$ separately, but calculating common parameters only once.
- *
- * \param[in] Y phenotype data
- * \param[in] K relationship matrix
- * \param[in] Z design matrix
- * \param[out] u  genome-estimated breeding values; input dimensions can be arbitrary: the matrix will be re-sized
- * \param[out] mu vector of intercepts
- *
- */
-void solveMM(const Matrix &Y, const Matrix &K, const Matrix &Z, Matrix &u, vector<double> &mu);
-/** \brief Solve a mixed model with fixed effect covariates
- *
- * Solves a mixed model
- *
- * \f$ Y = X\beta + Zu + e \f$
- *
- * \f$ u \sim \textrm{N}\left(0, \sigma^2_gK \right)\f$
- *
- * for each trait in the trait matrix \f$Y\f$ separately, but calculating common parameters only once. The matrix \f$X\f$ contains the fixed-effect covariates and the intercept. The intercept column is added to the provided matrix with the function, so it should not be included in the parameter.
- * \f$X\f$ can have the number of rows equal to either the number of lines (rows in \f$K\f$ or columns in \f$Z\f$) or the number of data points (rows of \f$Y\f$ or \f$Z\f$). Note also that the \f$X^{T}X\f$ matrix has to be non-singular. Simple dimension checks are made to eleminate obvious singularity, but the user has to make sure \f$X\f$ is full-rank.
- *
- * \param[in] Y phenotype data
- * \param[in] K relationship matrix
- * \param[in] Z design matrix
- * \param[in] X fixed effect matrix
- * \param[out] u  genome-estimated breeding values; input dimensions can be arbitrary: the matrix will be re-sized
- * \param[out] beta matrix of fixed effects
- *
- */
-void solveMM(const Matrix &Y, const Matrix &K, const Matrix &Z, const Matrix &X, Matrix &u, Matrix &beta);
 
 
-/** \brief SNP regression
- *
- * Estimates regression \f$ -\log_{10}p \f$ for a SNP with missing genotype data and multiple traits in a table. Genotypes should be coded as (0,1,2) for homozygous, hetereozygous and homozygous alternative. It will run faster of the major allele homozygotes are coded as 0.
- * Each trait is treated separately but it helps to include multiple traits because some caclulations are common and can performed only once.
- *
- * \param[in] Y response matrix with traits as columns and lines (represented once each) as rows
- * \param[in] snp array of genotypes
- * \param[in] misTok missing value identifier; should be distinct from (0,1,2)
- * \param[out] lPval \f$-\log_{10}p\f$
- *
- */
-void snpReg(const Matrix &Y, const int *snp, const int &misTok, double *lPval);
+namespace LikeMeth {
+	class EmmREML;
+	class MixedModel;
+	class SNPblock;
 
-/** \brief EMMA REML functor class
- *
- * Class that implements the REML function from Kang _et al_ (2008). Used in the likelihood maximization step.
- *
- */
-class EmmREML {
-public:
-
-	/// Default constructor
-	EmmREML() : etaSq_(nullptr), lambda_(nullptr), jCol_(0) {};
-	/** \brief Constructor
+	/** \brief EMMA REML functor class
 	 *
-	 * Sets up the object.
-	 *
-	 * \param[in] etaSq address of a Matrix object with \f$\eta^2\f$
-	 * \param[in] lambda address of a Matrix object with \f$\lambda\f$
-	 * \param[in] jCol phenotype column index
+	 * Class that implements the REML function from Kang _et al_ (2008). Used in the likelihood maximization step.
 	 *
 	 */
-	EmmREML(const Matrix &etaSq, const vector<double> &lambda, const size_t &jCol) : etaSq_(&etaSq), lambda_(&lambda), jCol_(jCol) {};
-
-	/// Destructor
-	~EmmREML(){etaSq_ = nullptr; lambda_ = nullptr; };
-
-	/// Copy constructor (not implemented)
-	EmmREML(const EmmREML &) = delete;
-
-	/// Assignement operator (not implemented)
-	EmmREML & operator=(const EmmREML &) = delete;
-
-	/** \brief Function operator
-	 *
-	 * Does the restricted likelihood calculation for each value of \f$\delta = \frac{\sigma^2_e}{\sigma^2_g}\f$ and the given columns of the \f$\eta^2\f$ and \f$\lambda\f$ matrices.
-	 *
-	 * \param[in] delta \f$\delta\f$ value
-	 *
-	 */
-	double operator()(const double &delta);
-
-	/** \brief Set column index
-	 *
-	 *\param[in] j column index
-	 */
-	void setColID(const size_t &j) {jCol_ = j; };
-private:
-	/// \f$\eta^2\f$ from Kang _et al_ equation (7). Points to a Matrix object with each trait as a column.
-	const Matrix *etaSq_;
-	/// \f$\lambda\f$ from Kang _et al_ equation (7). Points to a vector of eigenvalues.
-	const vector<double> *lambda_;
-	/// column ID of the etaSq matrix
-	size_t jCol_;
-
-
-};
-
-/** \brief Mixed model
- *
- * Constructors solve a mixed model given inputs. Public functions do GWA.
- *
- */
-class MixedModel {
+	class EmmREML {
 	public:
-		/** \brief Default constructor  */
-		MixedModel() : Y_{Matrix()}, K_{Matrix()}, Z_{Matrix()}, X_{Matrix()}, u_{Matrix()}, beta_{Matrix()}, delta_{0.0} {};
-		/** \brief Constructor with no fixed effect
+
+		/// Default constructor
+		EmmREML() : etaSq_(nullptr), lambda_(nullptr), jCol_(0) {};
+		/** \brief Constructor
 		 *
-		 * \param[in] yvec vectorized (by column) response matrix
-		 * \param[in] kvec vectorized relationship matrix
-		 * \param[in] repFac factor relating genotypes to replicates
-		 * \param[in] d number of traits
-		 * \param[in] Ngen number of genotypes
-		 * \param[in] N number of data points
+		 * Sets up the object.
 		 *
-		 */
-		MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &repFac, const size_t &d, const size_t &Ngen, const size_t &N);
-		/** \brief Constructor including a fixed effect
-		 *
-		 * \param[in] yvec vectorized (by column) response matrix
-		 * \param[in] kvec vectorized relationship matrix
-		 * \param[in] repFac factor relating genotypes to replicates
-		 * \param[in] xvec vectorized (by column) matrix of fixed effects
-		 * \param[in] d number of traits
-		 * \param[in] Ngen number of genotypes
-		 * \param[in] N number of data points
+		 * \param[in] etaSq address of a Matrix object with \f$\eta^2\f$
+		 * \param[in] lambda address of a Matrix object with \f$\lambda\f$
+		 * \param[in] jCol phenotype column index
 		 *
 		 */
-		MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N);
+		EmmREML(const Matrix &etaSq, const vector<double> &lambda, const size_t &jCol) : etaSq_(&etaSq), lambda_(&lambda), jCol_(jCol) {};
 
 		/// Destructor
-		~MixedModel(){};
+		~EmmREML(){etaSq_ = nullptr; lambda_ = nullptr; };
 
 		/// Copy constructor (not implemented)
-		MixedModel(const MixedModel &in) = delete;
-		/// Copy assignement (not implemented)
-		MixedModel & operator=(const MixedModel &in) = delete;
-		/** \brief Move constructor
-		 *
-		 * \param[in] in object to be moved
-		 */
-		MixedModel(MixedModel &&in) : Y_{move(in.Y_)}, K_{move(in.K_)}, Z_{move(in.Z_)}, X_{move(in.X_)}, u_{move(in.u_)}, delta_{in.delta_} {};
-		/** \brief Move assignment operator (not impplemented) */
-		MixedModel & operator=(MixedModel &&in) = delete;
+		EmmREML(const EmmREML &) = delete;
 
-		/** \brief Access the random effects
+		/// Assignement operator (not implemented)
+		EmmREML & operator=(const EmmREML &) = delete;
+
+		/** \brief Function operator
 		 *
-		 * \param[out] u random effect matrix
+		 * Does the restricted likelihood calculation for each value of \f$\delta = \frac{\sigma^2_e}{\sigma^2_g}\f$ and the given columns of the \f$\eta^2\f$ and \f$\lambda\f$ matrices.
+		 *
+		 * \param[in] delta \f$\delta\f$ value
+		 *
 		 */
-		void ranef(Matrix &u) const;
-		/** \brief Access the fixed effects
+		double operator()(const double &delta);
+
+		/** \brief Set column index
 		 *
-		 * Returns empty matrix if there are no fixed effects.
-		 *
-		 * \param[out] beta fixed effect matrix
+		 *\param[in] j column index
 		 */
-		void fixef(Matrix &beta) const;
-		/** \brief Marker heritability
-		 *
-		 * \return marker heritability \f$ h^2_\textsc{m} \f$
-		 */
-		double hSq() const { return 1.0/(1.0 + delta_); };
+		void setColID(const size_t &j) {jCol_ = j; };
 	private:
-		/** \brief Responce matrix */
-		const Matrix Y_;
-		/** \brief Relationship matrix */
-		const Matrix K_;
-		/** \brief Design matrix */
-		const Matrix Z_;
-		/** brief Fixed effects matrix */
-		const Matrix X_;
-		/** \brief BLUP matrix */
-		Matrix u_;
-		/** \brief Fixed effect matrix */
-		Matrix beta_;
-		/** \brief Delta value
+		/// \f$\eta^2\f$ from Kang _et al_ equation (7). Points to a Matrix object with each trait as a column.
+		const Matrix *etaSq_;
+		/// \f$\lambda\f$ from Kang _et al_ equation (7). Points to a vector of eigenvalues.
+		const vector<double> *lambda_;
+		/// column ID of the etaSq matrix
+		size_t jCol_;
+
+
+	};
+
+	/** \brief Mixed model
+	 *
+	 * Constructors solve a mixed model given inputs. Public functions do GWA.
+	 *
+	 */
+	class MixedModel {
+		friend class SNPblock;
+
+		public:
+			/** \brief Default constructor  */
+			MixedModel() : misTok_{0} {};
+			/** \brief Constructor with no fixed effect
+			 *
+			 * \param[in] yvec vectorized (by column) response matrix
+			 * \param[in] kvec vectorized relationship matrix
+			 * \param[in] repFac factor relating genotypes to replicates
+			 * \param[in] d number of traits
+			 * \param[in] Ngen number of genotypes
+			 * \param[in] N number of data points
+			 *
+			 */
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N);
+			/** \brief Constructor including a fixed effect
+			 *
+			 * \param[in] yvec vectorized (by column) response matrix
+			 * \param[in] kvec vectorized relationship matrix
+			 * \param[in] repFac factor relating genotypes to replicates
+			 * \param[in] xvec vectorized (by column) matrix of fixed effects
+			 * \param[in] d number of traits
+			 * \param[in] Ngen number of genotypes
+			 * \param[in] N number of data points
+			 *
+			 */
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N);
+			/** \brief Constructor with SNPs but no fixed effect
+			 *
+			 * \param[in] yvec vectorized (by column) response matrix
+			 * \param[in] kvec vectorized relationship matrix
+			 * \param[in] repFac factor relating genotypes to replicates
+			 * \param[in] d number of traits
+			 * \param[in] Ngen number of genotypes
+			 * \param[in] N number of data points
+			 * \param[in] snps vectorized (by column) SNP matrix
+			 * \param[in] misTok token representing missing genotype data
+			 * \param[out] lPval adress of the voectorized \f$ -\log_{10}p \f$ matrix
+			 *
+			 */
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> &snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
+			/** \brief Constructor including SNPs and a fixed effect
+			 *
+			 * \param[in] yvec vectorized (by column) response matrix
+			 * \param[in] kvec vectorized relationship matrix
+			 * \param[in] repFac factor relating genotypes to replicates
+			 * \param[in] xvec vectorized (by column) matrix of fixed effects
+			 * \param[in] d number of traits
+			 * \param[in] Ngen number of genotypes
+			 * \param[in] N number of data points
+			 * \param[in] snps vectorized (by column) SNP matrix
+			 * \param[in] misTok token representing missing genotype data
+			 * \param[out] lPval adress of the voectorized \f$ -\log_{10}p \f$ matrix
+			 *
+			 */
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> &snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, xvec, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
+			/// Destructor
+			~MixedModel(){};
+
+			/// Copy constructor (not implemented)
+			MixedModel(const MixedModel &in) = delete;
+			/// Copy assignement (not implemented)
+			MixedModel & operator=(const MixedModel &in) = delete;
+			/** \brief Move constructor
+			 *
+			 * \param[in] in object to be moved
+			 */
+			MixedModel(MixedModel &&in) : Y_{move(in.Y_)}, K_{move(in.K_)}, Z_{move(in.Z_)}, X_{move(in.X_)}, u_{move(in.u_)}, delta_{move(in.delta_)}, snps_{move(in.snps_)}, misTok_{in.misTok_}, lPval_{move(in.lPval_)} {};
+			/** \brief Move assignment operator (not impplemented) */
+			MixedModel & operator=(MixedModel &&in) = delete;
+
+			/** \brief Access the random effects
+			 *
+			 * \param[out] u random effect matrix
+			 */
+			void ranef(Matrix &u) const {u = u_; };
+			/** \brief Access the fixed effects
+			 *
+			 * Returns empty matrix if there are no fixed effects.
+			 *
+			 * \param[out] beta fixed effect matrix
+			 */
+			void fixef(Matrix &beta) const {beta = beta_; };
+			/** \brief Marker heritability
+			 *
+			 * \param[out] marker heritability \f$ h^2_\textsc{m} \f$
+			 */
+			void hSq(vector<double> &out) const;
+			/** \brief Genome-wide association
+			 *
+			 * Estimates regression \f$ -\log_{10}p \f$ for SNPs with missing genotype data and multiple traits in a table. Genotypes should be coded as (0,1,2) for homozygous, hetereozygous and homozygous alternative. It should run faster of the major allele homozygotes are coded as 0.
+			 * Each trait is treated separately but it helps to include multiple traits because some calculations are common and can be performed only once. The \f$ -\log_{10}p \f$ matrix has each trait in a column.
+			 *
+			 */
+			void gwa();
+		private:
+			/** \brief Responce matrix */
+			Matrix Y_;
+			/** \brief Relationship matrix */
+			const Matrix K_;
+			/** \brief Design matrix */
+			Matrix Z_;
+			/** brief Fixed effects matrix */
+			const Matrix X_;
+			/** \brief BLUP matrix */
+			Matrix u_;
+			/** \brief Fixed effect matrix */
+			Matrix beta_;
+			/** \brief Delta values
+			 *
+			 * \f$ \delta = \dfrac{\sigma^2_e}{\sigma^2_g}\f$, one for each trait.
+			 *
+			 */
+			vector<double> delta_;
+			/** \brief SNP matrix
+			 *
+			 * Vectorized (by column) SNP matrix. Individuals are in columns, SNPs in rows. TODO: convert to pointer.
+			 */
+			vector<int32_t> snps_;
+			/** \brief Missing genotype token */
+			int32_t misTok_;
+			/** \brief Pointer to the \f$ -\log_{10}p \f$ matrix
+			 *
+			 * Vectorized (by column; traits are in columns) matrix.
+			 */
+			vector<double> *lPval_;
+			/** \brief Single SNP regression
+			 *
+			 * \param[in] idx index of the SNP
+			 *
+			 */
+			void oneSNP_(const size_t &idx);
+	};
+
+	/** \brief A SNP block functor class
+	 *
+	 * A class to facilitate GWA multithreading in the `MixedModel` class. Points to a block of SNPs and runs `oneSNP_()` on each locus.
+	 *
+	 */
+	class SNPblock {
+	public:
+		/// Default constructor
+		SNPblock() : mmObj_{nullptr}, blockSize_{0}, blockStart_{0} {};
+		/** \brief Constructor
 		 *
-		 * \f$ \delta = \dfrac{\sigma^2_e}{\sigma^2_g}\f$
+		 * Sets up the pointer to the `MixedModel` object calling the current instance of this functor
+		 *
+		 * \param[in] parent address of the `MixedModel` object calling this functor
+		 * \param[in] bStart block start position
+		 * \param[in] bSize block size (number of SNPs)
 		 *
 		 */
-		double delta_;
+		SNPblock(MixedModel &parent, const size_t &bStart, const size_t &bSize): mmObj_(&parent), blockSize_(bSize), blockStart_(bStart) {};
 
-};
+		/// Destructor
+		~SNPblock(){ mmObj_ = nullptr; };
 
-/** \brief A SNP block functor class
- *
- * A class to facilitate GWA multithreading. Points to a block of SNPs and runs snp_Reg()_ on each locus.
- *
- */
-class SNPblock {
-public:
-	/// Default constructor
-	SNPblock() : rsp_{nullptr}, snp_{nullptr}, lPval_{nullptr}, blockSize_{0} {};
-	/** \brief Constructor
-	 *
-	 * Sets up the pointers to the data and results objects
-	 *
-	 * \param[in] rsp address of the response matrix
-	 * \param[in] snpArr pointer to the SNP array
-	 * \param[in] bStart block start position
-	 * \param[in] bSize block size (number of SNPs)
-	 * \param[out] lpvArr pointer to the array where the \f$-\log_{10}p\f$ are stored
-	 *
-	 */
-	SNPblock(const Matrix &rsp, const int *snpArr, const size_t &bStart, const size_t &bSize, double *lpvArr): rsp_(&rsp), snp_(snpArr), blockSize_(bSize), blockStart_(bStart), lPval_(lpvArr) {};
+		/// Copy constructor (not implemented)
+		SNPblock(const SNPblock &) = delete;
+		/// Copy assignment operator (not implemented)
+		SNPblock & operator=(const SNPblock &) = delete;
+		/// Move constructor
+		SNPblock(SNPblock &&in) : mmObj_{move(in.mmObj_)}, blockSize_{move(in.blockSize_)}, blockStart_{move(in.blockStart_)} { in.mmObj_ = nullptr; };
 
-	/// Destructor
-	~SNPblock(){ rsp_ = nullptr; snp_ = nullptr; lPval_ = nullptr; };
+		/** \brief Function operator
+		 *
+		 * Performs GWA on each SNP in the block.
+		 *
+		 */
+		void operator()();
+	private:
+		/// Pointer to a `MixedModel` object
+		MixedModel *mmObj_;
+		/// Number of SNPs in a block
+		size_t blockSize_;
+		/// Start position of the block in the SNP array
+		size_t blockStart_;
 
-	/// Copy constructor (not implemented)
-	SNPblock(const SNPblock &) = delete;
-	/// Copy assignment operator (not implemented)
-	SNPblock & operator=(const SNPblock &) = delete;
-	/// Move constructor
-	SNPblock(SNPblock &&in) : rsp_{move(in.rsp_)}, snp_{move(in.snp_)}, lPval_{move(in.lPval_)}, blockSize_{move(in.blockSize_)}, blockStart_{move(in.blockStart_)} { in.rsp_ = nullptr; in.snp_ = nullptr; in.lPval_ = nullptr; };
+	};
 
-	/** \brief Function operator
-	 *
-	 * Performs GWA on each SNP in the block.
-	 *
-	 */
-	void operator()();
-private:
-	/// Pointer to the response matrix
-	const Matrix *rsp_;
-	/// Pointer to the SNP array
-	const int *snp_;
-	/// Pointer to the \f$-\log_{10}p\f$ array (the results)
-	double *lPval_;
-	/// Number of SNPs in a block
-	size_t blockSize_;
-	/// Start position of the block in the SNP array
-	size_t blockStart_;
-
-};
-
-
+}
 #endif /* likeMeth_hpp */
+

@@ -210,6 +210,13 @@ namespace locMatrix {
 		 */
 		void save(const string &outFileName) const;
 
+		/** \brief Vectorize the matrix
+		 *
+		 * Vectorize the matrix by column.
+		 *
+		 * \param[out] out vector of matrix elements
+		 */
+		void vectorize(vector<double> &out) const;
 		// Linear algebra functions
 
 		/** \brief In-place Cholesky decomposition

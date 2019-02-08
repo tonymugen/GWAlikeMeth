@@ -5,19 +5,41 @@
 
 using namespace Rcpp;
 
-// rcpp_hello_world
-List rcpp_hello_world();
-RcppExport SEXP _GWAlikeMeth_rcpp_hello_world() {
+// reFit
+Rcpp::List reFit(const std::vector<double>& yVec, const std::vector<double>& kVec, const std::vector<int32_t>& repFac, const int32_t& d, const int32_t& Ngen);
+RcppExport SEXP _GWAlikeMeth_reFit(SEXP yVecSEXP, SEXP kVecSEXP, SEXP repFacSEXP, SEXP dSEXP, SEXP NgenSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(rcpp_hello_world());
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type yVec(yVecSEXP);
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type kVec(kVecSEXP);
+    Rcpp::traits::input_parameter< const std::vector<int32_t>& >::type repFac(repFacSEXP);
+    Rcpp::traits::input_parameter< const int32_t& >::type d(dSEXP);
+    Rcpp::traits::input_parameter< const int32_t& >::type Ngen(NgenSEXP);
+    rcpp_result_gen = Rcpp::wrap(reFit(yVec, kVec, repFac, d, Ngen));
+    return rcpp_result_gen;
+END_RCPP
+}
+// gwa
+Rcpp::List gwa(const std::vector<double>& yVec, const std::vector<double>& kVec, const std::vector<int32_t>& repFac, const std::vector<int32_t>& snps, const int32_t& d, const int32_t& Ngen);
+RcppExport SEXP _GWAlikeMeth_gwa(SEXP yVecSEXP, SEXP kVecSEXP, SEXP repFacSEXP, SEXP snpsSEXP, SEXP dSEXP, SEXP NgenSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type yVec(yVecSEXP);
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type kVec(kVecSEXP);
+    Rcpp::traits::input_parameter< const std::vector<int32_t>& >::type repFac(repFacSEXP);
+    Rcpp::traits::input_parameter< const std::vector<int32_t>& >::type snps(snpsSEXP);
+    Rcpp::traits::input_parameter< const int32_t& >::type d(dSEXP);
+    Rcpp::traits::input_parameter< const int32_t& >::type Ngen(NgenSEXP);
+    rcpp_result_gen = Rcpp::wrap(gwa(yVec, kVec, repFac, snps, d, Ngen));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_GWAlikeMeth_rcpp_hello_world", (DL_FUNC) &_GWAlikeMeth_rcpp_hello_world, 0},
+    {"_GWAlikeMeth_reFit", (DL_FUNC) &_GWAlikeMeth_reFit, 5},
+    {"_GWAlikeMeth_gwa", (DL_FUNC) &_GWAlikeMeth_gwa, 6},
     {NULL, NULL, 0}
 };
 

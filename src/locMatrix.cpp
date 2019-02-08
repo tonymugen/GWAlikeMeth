@@ -24,7 +24,7 @@
  * \copyright Copyright (c) 2016 Anthony J. Greenberg
  * \version 0.1
  *
- * This is the class implementation file for the experimental Matrix class.
+ * This is the class implementation file for the experimental Matrix class. This version is for including in R packages, so it uses the R BLAS and LAPACK interfaces.
  *
  *
  */
@@ -39,14 +39,11 @@
 #include <cmath>
 #include <climits>
 #include <utility>
-//#include <clapack.h>
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
-//#include <cblas.h>
 
 #include "locMatrix.hpp"
 
-using std::cerr;
 using std::endl;
 using std::flush;
 using std::ofstream;
@@ -253,8 +250,7 @@ Matrix& Matrix::operator=(Matrix &&inMat){
 double Matrix::getElem(const size_t& iRow, const size_t &jCol) const{
 #ifndef LMRG_CHECK_OFF
 	if ((iRow >= Nrow_) || (jCol >= Ncol_)) {
-		cerr << "WARNING: element out of range in getElem()" << endl;
-		return nan("");
+		throw("ERROR: element out of range in getElem()");
 	}
 #endif
 
@@ -307,7 +303,6 @@ void Matrix::save(const string &outFileName) const {
 		throw errMsg;
 	}
 	if ((Nrow_ == 0) || (Ncol_ == 0)) {
-		cerr << "WARNING: nothing to save" << endl;
 		outFl.close();
 		return;
 	}
@@ -321,6 +316,12 @@ void Matrix::save(const string &outFileName) const {
 	}
 
 	outFl.close();
+}
+
+void Matrix::vectorize(vector<double> &out) const {
+	out.resize(Nrow_*Ncol_);
+
+	memcpy(out.data(), data_, out.size()*sizeof(double));
 }
 
 void Matrix::chol(){
@@ -663,12 +664,10 @@ void Matrix::eigen(const char &tri, const size_t &n, Matrix &U, vector<double> &
 void Matrix::eigenSafe(const char &tri, Matrix &U, vector<double> &lam){
 #ifndef LMRG_CHECK_OFF
 	if (Nrow_ != Ncol_) {
-		cerr << "ERROR: matrix has to be at least square in eigen()" << endl;
-		exit(22);
+		throw("ERROR: matrix has to be at least square in eigen()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 
@@ -688,8 +687,7 @@ void Matrix::eigenSafe(const char &tri, Matrix &U, vector<double> &lam){
 	} else if (tri == 'l'){
 		uplo = 'L';
 	} else {
-		cerr << "ERROR: unknown triangle indicator " << tri << " in eigen()" << endl;
-		exit(18);
+		throw("ERROR: unknown triangle indicator in eigen()");
 	}
 	int N   = static_cast<int>(Nrow_);
 	int lda = static_cast<int>(Nrow_);
@@ -739,11 +737,10 @@ void Matrix::eigenSafe(const char &tri, Matrix &U, vector<double> &lam){
 void Matrix::premultZ(const Matrix &Z){
 #ifndef LMRG_CHECK_OFF
 	if (Z.getNcols() != Nrow_) {
-		cerr << "ERROR: Incompatible dimensions between Z and M in premultZ()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between Z and M in premultZ()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
+		throw("ERROR: one of the dimensions is zero");
 		exit(24);
 	}
 #endif
@@ -755,8 +752,7 @@ void Matrix::premultZ(const Matrix &Z){
 			if (Z.getElem(newRow, oldRow) == 1.0) {
 				fac[oldRow].push_back(newRow);
 			} else if (Z.getElem(newRow, oldRow) != 0.0) {
-				cerr << "ERROR: design matrix can only have elements 1 or 0 in premultZ()" << endl;
-				exit(17);
+				throw("ERROR: design matrix can only have elements 1 or 0 in premultZ()");
 			}
 		}
 	}
@@ -784,12 +780,10 @@ void Matrix::premultZ(const Matrix &Z){
 void Matrix::premultZ(const Matrix &Z, Matrix &out) const {
 #ifndef LMRG_CHECK_OFF
 	if (Z.getNcols() != Nrow_) {
-		cerr << "ERROR: Incompatible dimensions between Z and M in premultZ()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between Z and M in premultZ()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 	// build the vector that stores all the new row IDs for each old row (represented by columns of Z)
@@ -800,8 +794,7 @@ void Matrix::premultZ(const Matrix &Z, Matrix &out) const {
 			if (Z.getElem(newRow, oldRow) == 1.0) {
 				fac[oldRow].push_back(newRow);
 			} else if (Z.getElem(newRow, oldRow) != 0.0) {
-				cerr << "ERROR: design matrix can only have elements 1 or 0 in premultZ()" << endl;
-				exit(17);
+				throw("ERROR: design matrix can only have elements 1 or 0 in premultZ()");
 			}
 		}
 	}
@@ -826,12 +819,10 @@ void Matrix::premultZ(const Matrix &Z, Matrix &out) const {
 void Matrix::premultZt(const Matrix &Z){
 #ifndef LMRG_CHECK_OFF
 	if (Z.getNrows() != Nrow_) {
-		cerr << "ERROR: Incompatible dimensions between Z and M in premultZt()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between Z and M in premultZt()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 	// build the vector that stores all the new row IDs for each old row (represented by columns of Z)
@@ -842,8 +833,7 @@ void Matrix::premultZt(const Matrix &Z){
 			if (Z.getElem(newRow, oldRow) == 1.0) {
 				fac[oldRow].push_back(newRow);
 			} else if (Z.getElem(newRow, oldRow) != 0.0) {
-				cerr << "ERROR: design matrix can only have elements 1 or 0 in premultZt()" << endl;
-				exit(17);
+				throw("ERROR: design matrix can only have elements 1 or 0 in premultZt()");
 			}
 		}
 	}
@@ -872,12 +862,10 @@ void Matrix::premultZt(const Matrix &Z){
 void Matrix::premultZt(const Matrix &Z, Matrix &out) const {
 #ifndef LMRG_CHECK_OFF
 	if (Z.getNrows() != Nrow_) {
-		cerr << "ERROR: Incompatible dimensions between Z and M in premultZt()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between Z and M in premultZt()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 	// build the vector that stores all the new row IDs for each old row (represented by columns of Z)
@@ -888,8 +876,7 @@ void Matrix::premultZt(const Matrix &Z, Matrix &out) const {
 			if (Z.getElem(newRow, oldRow) == 1.0) {
 				fac[oldRow].push_back(newRow);
 			} else if (Z.getElem(newRow, oldRow) != 0.0) {
-				cerr << "ERROR: design matrix can only have elements 1 or 0 in premultZt()" << endl;
-				exit(17);
+				throw("ERROR: design matrix can only have elements 1 or 0 in premultZt()");
 			}
 		}
 	}
@@ -916,12 +903,10 @@ void Matrix::premultZt(const Matrix &Z, Matrix &out) const {
 void Matrix::postmultZ(const Matrix &Z){
 #ifndef LMRG_CHECK_OFF
 	if (Z.getNrows() != Ncol_) {
-		cerr << "ERROR: Incompatible dimensions between Z and M in postmultZ()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between Z and M in postmultZ()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 	// build the vector that stores all the old row IDs for each new row
@@ -932,8 +917,7 @@ void Matrix::postmultZ(const Matrix &Z){
 			if (Z.getElem(oldRow, newCol) == 1.0) {
 				fac[newCol].push_back(oldRow);
 			} else if (Z.getElem(oldRow, newCol) != 0.0) {
-				cerr << "ERROR: design matrix can only have elements 1 or 0 in postmultZ()" << endl;
-				exit(17);
+				throw("ERROR: design matrix can only have elements 1 or 0 in postmultZ()");
 			}
 		}
 	}
@@ -961,12 +945,10 @@ void Matrix::postmultZ(const Matrix &Z){
 void Matrix::postmultZ(const Matrix &Z, Matrix &out) const{
 #ifndef LMRG_CHECK_OFF
 	if (Z.getNrows() != Ncol_) {
-		cerr << "ERROR: Incompatible dimensions between Z and M in postmultZ()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between Z and M in postmultZ()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 	// build the vector that stores all the old column IDs for each new column
@@ -977,8 +959,7 @@ void Matrix::postmultZ(const Matrix &Z, Matrix &out) const{
 			if (Z.getElem(oldRow, newCol) == 1.0) {
 				fac[newCol].push_back(oldRow);
 			} else if (Z.getElem(oldRow, newCol) != 0.0) {
-				cerr << "ERROR: design matrix can only have elements 1 or 0 in postmultZ()" << endl;
-				exit(17);
+				throw("ERROR: design matrix can only have elements 1 or 0 in postmultZ()");
 			}
 		}
 	}
@@ -1002,12 +983,10 @@ void Matrix::postmultZ(const Matrix &Z, Matrix &out) const{
 void Matrix::postmultZt(const Matrix &Z){
 #ifndef LMRG_CHECK_OFF
 	if (Z.getNcols() != Ncol_) { // Z not transposed
-		cerr << "ERROR: Incompatible dimensions between Z and M in postmultZ()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between Z and M in postmultZ()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 	// build the vector that stores all the new row IDs for each old row (represented by columns of Z)
@@ -1018,8 +997,7 @@ void Matrix::postmultZt(const Matrix &Z){
 			if (Z.getElem(newRow, oldRow) == 1.0) {
 				fac[oldRow].push_back(newRow);
 			} else if (Z.getElem(newRow, oldRow) != 0.0) {
-				cerr << "ERROR: design matrix can only have elements 1 or 0 in postmultZ()" << endl;
-				exit(17);
+				throw("ERROR: design matrix can only have elements 1 or 0 in postmultZ()");
 			}
 		}
 	}
@@ -1045,12 +1023,10 @@ void Matrix::postmultZt(const Matrix &Z){
 void Matrix::postmultZt(const Matrix &Z, Matrix &out) const{
 #ifndef LMRG_CHECK_OFF
 	if (Z.getNcols() != Ncol_) { // Z not transposed
-		cerr << "ERROR: Incompatible dimensions between Z and M in postmultZ()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between Z and M in postmultZ()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 	// build the vector that stores all the new row IDs for each old row (represented by columns of Z)
@@ -1061,8 +1037,7 @@ void Matrix::postmultZt(const Matrix &Z, Matrix &out) const{
 			if (Z.getElem(newRow, oldRow) == 1.0) {
 				fac[oldRow].push_back(newRow);
 			} else if (Z.getElem(newRow, oldRow) != 0.0) {
-				cerr << "ERROR: design matrix can only have elements 1 or 0 in postmultZ()" << endl;
-				exit(17);
+				throw("ERROR: design matrix can only have elements 1 or 0 in postmultZ()");
 			}
 		}
 	}
@@ -1085,26 +1060,15 @@ void Matrix::postmultZt(const Matrix &Z, Matrix &out) const{
 void Matrix::syrk(const char &tri, const double &alpha, const double &beta, Matrix &C) const {
 #ifndef LMRG_CHECK_OFF
 	if ((Ncol_ > INT_MAX) || (Nrow_ > INT_MAX)) {
-		cerr << "ERROR: at least one matrix dimension too big to safely convert to int in syrk()" << endl;
-		exit(13);
+		throw("ERROR: at least one matrix dimension too big to safely convert to int in syrk()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 
 	if ((C.getNrows() != Ncol_) || (C.getNcols() != Ncol_)) {
 		C.resize(Ncol_, Ncol_);
-	}
-	CBLAS_UPLO triTok;
-	if (tri == 'u') {
-		triTok = CblasUpper;
-	} else if (tri == 'l') {
-		triTok = CblasLower;
-	} else {
-		cerr << "ERROR: unknown triangle indicator " << tri << " in syrk()" << endl;
-		exit(18);
 	}
 
 	// integer parameters
@@ -1113,33 +1077,25 @@ void Matrix::syrk(const char &tri, const double &alpha, const double &beta, Matr
 	const int lda = static_cast<int>(Nrow_);
 	const int ldc = static_cast<int>(Ncol_);
 
-	cblas_dsyrk(CblasColMajor, triTok, CblasTrans, n, k, alpha, data_, lda, beta, C.data_, ldc);
+	// transpose token
+	const char trans = 't';
+
+	dsyrk_(&tri, &trans, &n, &k, &alpha, data_, &lda, &beta, C.data_, &ldc);
 
 }
 
 void Matrix::tsyrk(const char &tri, const double &alpha, const double &beta, Matrix &C) const {
 #ifndef LMRG_CHECK_OFF
 	if ((Ncol_ > INT_MAX) || (Nrow_ > INT_MAX)) {
-		cerr << "ERROR: at least one matrix dimension too big to safely convert to int in tsyrk()" << endl;
-		exit(13);
+		throw("ERROR: at least one matrix dimension too big to safely convert to int in tsyrk()");
 	}
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 #endif
 
 	if ((C.getNrows() != Nrow_) || (C.getNcols() != Nrow_)) {
 		C.resize(Nrow_, Nrow_);
-	}
-	CBLAS_UPLO triTok;
-	if (tri == 'u') {
-		triTok = CblasUpper;
-	} else if (tri == 'l') {
-		triTok = CblasLower;
-	} else {
-		cerr << "ERROR: unknown triangle indicator " << tri << " in tsyrk()" << endl;
-		exit(18);
 	}
 
 	// integer parameters
@@ -1148,70 +1104,54 @@ void Matrix::tsyrk(const char &tri, const double &alpha, const double &beta, Mat
 	const int lda = static_cast<int>(Nrow_);
 	const int ldc = static_cast<int>(Nrow_);
 
-	cblas_dsyrk(CblasColMajor, triTok, CblasNoTrans, n, k, alpha, data_, lda, beta, C.data_, ldc);
+	// transpose token
+	const char trans = 'n';
+
+	dsyrk_(&tri, &trans, &n, &k, &alpha, data_, &lda, &beta, C.data_, &ldc);
 }
 
 void Matrix::symm(const char &tri, const char &side, const double &alpha, const Matrix &symA, const double &beta, Matrix &C) const{
 #ifndef LMRG_CHECK_OFF
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 	if (symA.getNrows() != symA.getNcols()) {
-		cerr << "ERROR: symmetric matrix symA has to be square in symm()" << endl;
-		exit(19);
+		throw("ERROR: symmetric matrix symA has to be square in symm()");
 	}
 	if (side == 'l') {
 		if ((Nrow_ > INT_MAX) || (symA.getNcols() > INT_MAX)) {
-			cerr << "ERROR: at least one matrix dimension too big to safely convert to int in symm()" << endl;
-			exit(13);
+		throw("ERROR: at least one matrix dimension too big to safely convert to int in symm()");
 		}
 	} else if (side == 'r') {
 		if ((symA.getNrows() > INT_MAX) || (Ncol_ > INT_MAX)) {
-			cerr << "ERROR: at least one matrix dimension too big to safely convert to int in symm()" << endl;
-			exit(13);
+			throw("ERROR: at least one matrix dimension too big to safely convert to int in symm()");
 		}
 	}
 
 	if ((symA.getNcols() != Nrow_) && (side == 'l')) { // AB
-		cerr << "ERROR: Incompatible dimensions between B and A in symm()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between B and A in symm()");
 	}
 	if ((symA.getNrows() != Ncol_) && (side == 'r')) { // BA
-		cerr << "ERROR: Incompatible dimensions between A and B in symm()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between A and B in symm()");
 	}
 #endif
 
-	CBLAS_SIDE sideTok;
 	int m;
 	int n;
 	if (side == 'l') { // AB
-		sideTok = CblasLeft;
 		m = static_cast<int>(symA.getNrows());
 		n = static_cast<int>(Ncol_);
 		if ((C.getNrows() != symA.getNrows()) || (C.getNcols() != Ncol_)) {
 			C.resize(symA.getNrows(), Ncol_);
 		}
 	} else if (side == 'r') { // BA
-		sideTok = CblasRight;
 		m = static_cast<int>(Nrow_);
 		n = static_cast<int>(symA.getNcols());
 		if ((C.getNrows() != Nrow_) || (C.getNcols() != symA.getNcols())) {
 			C.resize(Nrow_, symA.getNcols());
 		}
 	} else {
-		cerr << "ERROR: unknown side indicator " << side << " in symm()" << endl;
-		exit(18);
-	}
-	CBLAS_UPLO triTok;
-	if (tri == 'u') {
-		triTok = CblasUpper;
-	} else if (tri == 'l') {
-		triTok = CblasLower;
-	} else {
-		cerr << "ERROR: unknown triangle indicator " << tri << " in symm()" << endl;
-		exit(18);
+		throw("ERROR: unknown side indicator in symm()");
 	}
 
 	// final integer parameters
@@ -1219,31 +1159,26 @@ void Matrix::symm(const char &tri, const char &side, const double &alpha, const 
 	const int ldb = static_cast<int>(Nrow_);
 	const int ldc = m; // for clarity
 
-	cblas_dsymm(CblasColMajor, sideTok, triTok, m, n, alpha, symA.data_, lda, data_, ldb, beta, C.data_, ldc);
+	dsymm_(&side, &tri, &m, &n, &alpha, symA.data_, &lda, data_, &ldb, &beta, C.data_, &ldc);
 
 }
 
 void Matrix::symc(const char &tri, const double &alpha, const Matrix &X, const size_t &xCol, const double &beta, vector<double> &y) const{
 #ifndef LMRG_CHECK_OFF
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 	if (Ncol_ != Nrow_) {
-		cerr << "ERROR: symmetric matrix (current object) has to be square in symc()" << endl;
-		exit(19);
+		throw("ERROR: symmetric matrix (current object) has to be square in symc()");
 	}
 	if ((Ncol_ > INT_MAX) || (X.getNrows() > INT_MAX)) {
-		cerr << "ERROR: at least one matrix dimension too big to safely convert to int in symc()" << endl;
-		exit(13);
+		throw("ERROR: at least one matrix dimension too big to safely convert to int in symc()");
 	}
 	if (X.getNrows() != Ncol_) {
-		cerr << "ERROR: Incompatible dimensions between A and X in symc()" << endl;
-		exit(16);
+		throw("ERROR: Incompatible dimensions between A and X in symc()");
 	}
 	if (xCol >= X.getNcols()) {
-		cerr << "ERROR: column index " << xCol << " out of range for matrix X (" << X.getNrows() << " x " << X.getNcols() << ") in symc()" << endl;
-		exit(21);
+		throw("ERROR: column index out of range for matrix X in symc()");
 	}
 #endif
 	if (y.size() < Nrow_) {
@@ -1251,15 +1186,6 @@ void Matrix::symc(const char &tri, const double &alpha, const Matrix &X, const s
 	}
 
 	// BLAS routine constants
-	CBLAS_UPLO triTok;
-	if (tri == 'u') {
-		triTok = CblasUpper;
-	} else if (tri == 'l') {
-		triTok = CblasLower;
-	} else {
-		cerr << "ERROR: unknown triangle indicator " << tri << " in symc()" << endl;
-		exit(18);
-	}
 	const int n    = static_cast<int>(Nrow_);
 	const int lda  = n;
 	const int incx = 1;
@@ -1267,86 +1193,79 @@ void Matrix::symc(const char &tri, const double &alpha, const Matrix &X, const s
 
 	const double *xbeg = X.data_ + xCol*(X.Nrow_); // offset to the column of interest
 
-	cblas_dsymv(CblasColMajor, triTok, n, alpha, data_, lda, xbeg, incx, beta, y.data(), incy);
+	dsymv_(&tri, &n, &alpha, data_, &lda, xbeg, &incx, &beta, y.data(), &incy);
 }
 
 void Matrix::gemm(const bool &transA, const double &alpha, const Matrix &A, const bool &transB, const double &beta, Matrix &C) const{
 #ifndef LMRG_CHECK_OFF
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 	if ((A.getNcols() > INT_MAX) || (A.getNrows() > INT_MAX)) {
-		cerr << "ERROR: at least one A matrix dimension too big to safely convert to int in gemm()" << endl;
-		exit(13);
+		throw("ERROR: at least one A matrix dimension too big to safely convert to int in gemm()");
 	}
 
 	if (transB) {
 		if (Nrow_ > INT_MAX) {
-			cerr << "ERROR: at least one B matrix dimension too big to safely convert to int in gemm()" << endl;
-			exit(13);
+			throw("ERROR: at least one B matrix dimension too big to safely convert to int in gemm()");
 		}
 	} else {
 		if (Ncol_ > INT_MAX) {
-			cerr << "ERROR: at least one B matrix dimension too big to safely convert to int in gemm()" << endl;
-			exit(13);
+			throw("ERROR: at least one B matrix dimension too big to safely convert to int in gemm()");
 		}
 	}
 	if (transA) {
 		if (transB && (A.getNrows() != Ncol_)) {
-			cerr << "ERROR: Incompatible dimensions between A^T and B^T in gemm()" << endl;
-			exit(16);
+			throw("ERROR: Incompatible dimensions between A^T and B^T in gemm()");
 		} else if (!transB && (A.getNrows() != Nrow_)){
-			cerr << "ERROR: Incompatible dimensions between A^T and B in gemm()" << endl;
-			exit(16);
+			throw("ERROR: Incompatible dimensions between A^T and B in gemm()");
 		}
 
 	} else {
 		if (transB && (A.getNcols() != Ncol_)) {
-			cerr << "ERROR: Incompatible dimensions between A and B^T in gemm()" << endl;
+			throw("ERROR: Incompatible dimensions between A and B^T in gemm()");
 			exit(16);
 		} else if (!transB && (A.getNcols() != Nrow_)) {
-			cerr << "ERROR: Incompatible dimensions between A and B in gemm()" << endl;
-			exit(16);
+			throw("ERROR: Incompatible dimensions between A and B in gemm()");
 		}
 	}
 #endif
 
-	CBLAS_TRANSPOSE tAtok;
-	CBLAS_TRANSPOSE tBtok;
+	char tAtok;
+	char tBtok;
 
 	int m;
 	int k;
 	int n;
 	if (transA) {
-		tAtok = CblasTrans;
+		tAtok = 't';
 		m     = static_cast<int>(A.getNcols());
 		k     = static_cast<int>(A.getNrows());
 		if (transB) {
-			tBtok = CblasTrans;
+			tBtok = 't';
 			n     = static_cast<int>(Nrow_);
 			if ((C.getNrows() != A.getNcols()) || (C.getNcols() != Nrow_)) {
 				C.resize(A.getNcols(), Nrow_);
 			}
 		} else {
-			tBtok = CblasNoTrans;
+			tBtok = 'n';
 			n     = static_cast<int>(Ncol_);
 			if ((C.getNrows() != A.getNcols()) || (C.getNcols() != Ncol_)) {
 				C.resize(A.getNcols(), Ncol_);
 			}
 		}
 	} else {
-		tAtok = CblasNoTrans;
+		tAtok = 'n';
 		m     = static_cast<int>(A.getNrows());
 		k     = static_cast<int>(A.getNcols());
 		if (transB) {
-			tBtok = CblasTrans;
+			tBtok = 't';
 			n     = static_cast<int>(Nrow_);
 			if ((C.getNrows() != A.getNrows()) || (C.getNcols() != Nrow_)) {
 				C.resize(A.getNrows(), Nrow_);
 			}
 		} else {
-			tBtok = CblasNoTrans;
+			tBtok = 'n';
 			n     = static_cast<int>(Ncol_);
 			if ((C.getNrows() != A.getNrows()) || (C.getNcols() != Ncol_)) {
 				C.resize(A.getNrows(), Ncol_);
@@ -1358,39 +1277,33 @@ void Matrix::gemm(const bool &transA, const double &alpha, const Matrix &A, cons
 	const int ldb = (transB ? n : k);
 	const int ldc = m;
 
-	cblas_dgemm(CblasColMajor, tAtok, tBtok, m, n, k, alpha, A.data_, lda, data_, ldb, beta, C.data_, ldc);
+	dgemm_(&tAtok, &tBtok, &m, &n, &k, &alpha, A.data_, &lda, data_, &ldb, &beta, C.data_, &ldc);
 
 }
 void Matrix::gemc(const bool &trans, const double &alpha, const Matrix &X, const size_t &xCol, const double &beta, vector<double> &y) const {
 #ifndef LMRG_CHECK_OFF
 	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
-		cerr << "ERROR: one of the dimensions is zero" << endl;
-		exit(24);
+		throw("ERROR: one of the dimensions is zero");
 	}
 	if (trans) {
 		if ((Nrow_ > INT_MAX) || (X.getNrows() > INT_MAX)) {
-			cerr << "ERROR: at least one matrix dimension too big to safely convert to int in gemc()" << endl;
-			exit(13);
+			throw("ERROR: at least one matrix dimension too big to safely convert to int in gemc()");
 		}
 		if (Nrow_ != X.getNrows()) {
-			cerr << "ERROR: Incompatible dimensions between A and X in gemc()" << endl;
-			exit(16);
+			throw("ERROR: Incompatible dimensions between A and X in gemc()");
 
 		}
 	} else {
 		if ((Ncol_ > INT_MAX) || (X.getNrows() > INT_MAX)) {
-			cerr << "ERROR: at least one matrix dimension too big to safely convert to int in gemc()" << endl;
-			exit(13);
+			throw("ERROR: at least one matrix dimension too big to safely convert to int in gemc()");
 		}
 		if (Ncol_ != X.getNrows()) {
-			cerr << "ERROR: Incompatible dimensions between A and X in gemc()" << endl;
-			exit(16);
+			throw("ERROR: Incompatible dimensions between A and X in gemc()");
 
 		}
 	}
 	if (xCol >= X.getNcols()) {
-		cerr << "ERROR: column index " << xCol << " out of range for matrix X (" << X.getNrows() << " x " << X.getNcols() << ") in gemc()" << endl;
-		exit(21);
+		throw("ERROR: column index out of range for matrix X in gemc()");
 	}
 #endif
 
@@ -1399,7 +1312,7 @@ void Matrix::gemc(const bool &trans, const double &alpha, const Matrix &X, const
 	}
 
 	// Establish constants for DGEMV
-	const CBLAS_TRANSPOSE tTok = (trans ? CblasTrans : CblasNoTrans);
+	const char tTok = (trans ? 't' : 'n');
 
 	const int m    = static_cast<int>(Nrow_);
 	const int n    = static_cast<int>(Ncol_);
@@ -1409,15 +1322,14 @@ void Matrix::gemc(const bool &trans, const double &alpha, const Matrix &X, const
 
 	const double *xbeg = X.data_ + xCol*(X.Nrow_); // offset to the column of interest
 
-	cblas_dgemv(CblasColMajor, tTok, m, n, alpha, data_, lda, xbeg, incx, beta, y.data(), incy);
+	dgemv_(&tTok, &m, &n, &alpha, data_, &lda, xbeg, &incx, &beta, y.data(), &incy);
 
 }
 
 Matrix Matrix::operator*(const Matrix &m) const{
 #ifndef LMRG_CHECK_OFF
 	if ((Nrow_ != m.Nrow_) || (Ncol_ != m.Ncol_)) {
-		cerr << "ERROR: Incompatible dimensions between matrices in the Hadamard product" << endl;
-		exit(19);
+		throw("ERROR: Incompatible dimensions between matrices in the Hadamard product");
 	}
 #endif
 	Matrix res(*this);
@@ -1440,8 +1352,7 @@ Matrix Matrix::operator*(const double &scal) const{
 Matrix Matrix::operator/(const Matrix &m) const{
 #ifndef LMRG_CHECK_OFF
 	if ((Nrow_ != m.Nrow_) || (Ncol_ != m.Ncol_)) {
-		cerr << "ERROR: Incompatible dimensions between matrices in the Hadamard product" << endl;
-		exit(19);
+		throw("ERROR: Incompatible dimensions between matrices in the Hadamard product");
 	}
 #endif
 	Matrix res(*this);
@@ -1464,8 +1375,7 @@ Matrix Matrix::operator/(const double &scal) const{
 Matrix Matrix::operator+(const Matrix &m) const{
 #ifndef LMRG_CHECK_OFF
 	if ((Nrow_ != m.Nrow_) || (Ncol_ != m.Ncol_)) {
-		cerr << "ERROR: Incompatible dimensions between matrices in the Hadamard product" << endl;
-		exit(19);
+		throw("ERROR: Incompatible dimensions between matrices in the Hadamard product");
 	}
 #endif
 	Matrix res(*this);
@@ -1487,8 +1397,7 @@ Matrix Matrix::operator+(const double &scal) const{
 Matrix Matrix::operator-(const Matrix &m) const{
 #ifndef LMRG_CHECK_OFF
 	if ((Nrow_ != m.Nrow_) || (Ncol_ != m.Ncol_)) {
-		cerr << "ERROR: Incompatible dimensions between matrices in the Hadamard product" << endl;
-		exit(19);
+		throw("ERROR: Incompatible dimensions between matrices in the Hadamard product");
 	}
 #endif
 	Matrix res(*this);
@@ -1591,8 +1500,7 @@ void Matrix::colSums(vector<double> &sums) const{
 void Matrix::rowMultiply(const vector<double> &scalars){
 #ifndef LMRG_CHECK_OFF
 	if (scalars.size() != Ncol_) {
-		cerr << "ERROR: Vector of scalars has wrong length in rowMultiply(vector)" << endl;
-		exit(20);
+		throw("ERROR: Vector of scalars has wrong length in rowMultiply(vector)");
 	}
 #endif
 
@@ -1605,8 +1513,7 @@ void Matrix::rowMultiply(const vector<double> &scalars){
 void Matrix::rowMultiply(const double &scalar, const size_t &iRow){
 #ifndef LMRG_CHECK_OFF
 	if (iRow >= Nrow_) {
-		cerr << "ERROR: Row index out of bounds in rowMultiply(scalar)" << endl;
-		exit(21);
+		throw("ERROR: Row index out of bounds in rowMultiply(scalar)");
 	}
 #endif
 	for (size_t jCol = 0; jCol < Ncol_; jCol++) {
@@ -1616,8 +1523,7 @@ void Matrix::rowMultiply(const double &scalar, const size_t &iRow){
 void Matrix::colMultiply(const vector<double> &scalars){
 #ifndef LMRG_CHECK_OFF
 	if (scalars.size() != Nrow_) {
-		cerr << "ERROR: Vector of scalars has wrong length in colMultiply(vector)" << endl;
-		exit(20);
+		throw("ERROR: Vector of scalars has wrong length in colMultiply(vector)");
 	}
 #endif
 
@@ -1630,8 +1536,7 @@ void Matrix::colMultiply(const vector<double> &scalars){
 void Matrix::colMultiply(const double &scalar, const size_t &jCol){
 #ifndef LMRG_CHECK_OFF
 	if (jCol >= Ncol_) {
-		cerr << "ERROR: Column index out of bounds in colMultiply(scalar)" << endl;
-		exit(21);
+		throw("ERROR: Column index out of bounds in colMultiply(scalar)");
 	}
 #endif
 	for (size_t iRow = 0; iRow < Nrow_; iRow++) {
@@ -1641,8 +1546,7 @@ void Matrix::colMultiply(const double &scalar, const size_t &jCol){
 void Matrix::rowDivide(const vector<double> &scalars){
 #ifndef LMRG_CHECK_OFF
 	if (scalars.size() != Ncol_) {
-		cerr << "ERROR: Vector of scalars has wrong length in rowDivide(vector)" << endl;
-		exit(20);
+		throw("ERROR: Vector of scalars has wrong length in rowDivide(vector)");
 	}
 #endif
 
@@ -1655,8 +1559,7 @@ void Matrix::rowDivide(const vector<double> &scalars){
 void Matrix::rowDivide(const double &scalar, const size_t &iRow){
 #ifndef LMRG_CHECK_OFF
 	if (iRow >= Nrow_) {
-		cerr << "ERROR: Row index out of bounds in rowDivide(scalar)" << endl;
-		exit(21);
+		throw("ERROR: Row index out of bounds in rowDivide(scalar)");
 	}
 #endif
 	for (size_t jCol = 0; jCol < Ncol_; jCol++) {
@@ -1666,8 +1569,7 @@ void Matrix::rowDivide(const double &scalar, const size_t &iRow){
 void Matrix::colDivide(const vector<double> &scalars){
 #ifndef LMRG_CHECK_OFF
 	if (scalars.size() != Nrow_) {
-		cerr << "ERROR: Vector of scalars has wrong length in colDivide(vector)" << endl;
-		exit(20);
+		throw("ERROR: Vector of scalars has wrong length in colDivide(vector)");
 	}
 #endif
 
@@ -1680,8 +1582,7 @@ void Matrix::colDivide(const vector<double> &scalars){
 void Matrix::colDivide(const double &scalar, const size_t &jCol){
 #ifndef LMRG_CHECK_OFF
 	if (jCol >= Ncol_) {
-		cerr << "ERROR: Column index out of bounds in colDivide(scalar)" << endl;
-		exit(21);
+		throw("ERROR: Column index out of bounds in colDivide(scalar)");
 	}
 #endif
 	for (size_t iRow = 0; iRow < Nrow_; iRow++) {
@@ -1691,8 +1592,7 @@ void Matrix::colDivide(const double &scalar, const size_t &jCol){
 void Matrix::rowAdd(const vector<double> &scalars){
 #ifndef LMRG_CHECK_OFF
 	if (scalars.size() != Ncol_) {
-		cerr << "ERROR: Vector of scalars has wrong length in rowAdd(vector)" << endl;
-		exit(20);
+		throw("ERROR: Vector of scalars has wrong length in rowAdd(vector)");
 	}
 #endif
 
@@ -1705,8 +1605,7 @@ void Matrix::rowAdd(const vector<double> &scalars){
 void Matrix::rowAdd(const double &scalar, const size_t &iRow){
 #ifndef LMRG_CHECK_OFF
 	if (iRow >= Nrow_) {
-		cerr << "ERROR: Row index out of bounds in rowAdd(scalar)" << endl;
-		exit(21);
+		throw("ERROR: Row index out of bounds in rowAdd(scalar)");
 	}
 #endif
 	for (size_t jCol = 0; jCol < Ncol_; jCol++) {
@@ -1716,8 +1615,7 @@ void Matrix::rowAdd(const double &scalar, const size_t &iRow){
 void Matrix::colAdd(const vector<double> &scalars){
 #ifndef LMRG_CHECK_OFF
 	if (scalars.size() != Nrow_) {
-		cerr << "ERROR: Vector of scalars has wrong length in colAdd(vector)" << endl;
-		exit(20);
+		throw("ERROR: Vector of scalars has wrong length in colAdd(vector)");
 	}
 #endif
 
@@ -1730,8 +1628,7 @@ void Matrix::colAdd(const vector<double> &scalars){
 void Matrix::colAdd(const double &scalar, const size_t &jCol){
 #ifndef LMRG_CHECK_OFF
 	if (jCol >= Ncol_) {
-		cerr << "ERROR: Column index out of bounds in colAdd(scalar)" << endl;
-		exit(21);
+		throw("ERROR: Column index out of bounds in colAdd(scalar)");
 	}
 #endif
 	for (size_t iRow = 0; iRow < Nrow_; iRow++) {
@@ -1741,8 +1638,7 @@ void Matrix::colAdd(const double &scalar, const size_t &jCol){
 void Matrix::rowSub(const vector<double> &scalars){
 #ifndef LMRG_CHECK_OFF
 	if (scalars.size() != Ncol_) {
-		cerr << "ERROR: Vector of scalars has wrong length in rowSub(vector)" << endl;
-		exit(20);
+		throw("ERROR: Vector of scalars has wrong length in rowSub(vector)");
 	}
 #endif
 
@@ -1755,8 +1651,7 @@ void Matrix::rowSub(const vector<double> &scalars){
 void Matrix::rowSub(const double &scalar, const size_t &iRow){
 #ifndef LMRG_CHECK_OFF
 	if (iRow >= Nrow_) {
-		cerr << "ERROR: Row index out of bounds in rowSub(scalar)" << endl;
-		exit(21);
+		throw("ERROR: Row index out of bounds in rowSub(scalar)");
 	}
 #endif
 	for (size_t jCol = 0; jCol < Ncol_; jCol++) {
@@ -1766,8 +1661,7 @@ void Matrix::rowSub(const double &scalar, const size_t &iRow){
 void Matrix::colSub(const vector<double> &scalars){
 #ifndef LMRG_CHECK_OFF
 	if (scalars.size() != Nrow_) {
-		cerr << "ERROR: Vector of scalars has wrong length in colSub(vector)" << endl;
-		exit(20);
+		throw("ERROR: Vector of scalars has wrong length in colSub(vector)");
 	}
 #endif
 
@@ -1780,8 +1674,7 @@ void Matrix::colSub(const vector<double> &scalars){
 void Matrix::colSub(const double &scalar, const size_t &jCol){
 #ifndef LMRG_CHECK_OFF
 	if (jCol >= Ncol_) {
-		cerr << "ERROR: Column index out of bounds in colSub(scalar)" << endl;
-		exit(21);
+		throw("ERROR: Column index out of bounds in colSub(scalar)");
 	}
 #endif
 	for (size_t iRow = 0; iRow < Nrow_; iRow++) {
@@ -1792,10 +1685,13 @@ void Matrix::colSub(const double &scalar, const size_t &jCol){
 void Matrix::appendCol(const Matrix &cols){
 #ifndef LMRG_CHECK_OFF
 	if (Ncol_ > cols.Ncol_ + Ncol_) { // happens on wrap-around
-		cerr << "ERROR: Number of columns (" << Ncol_ << ") too big to expand" << endl;
-		exit(2);
+		throw("ERROR: Number of columns too big to expand");
 	}
 #endif
+	// if the other matrix is empty, do nothing
+	if ( (cols.Ncol_ == 0) || (cols.Ncol_ == 0) ) {
+		 return; 
+	}
 	if (this == &cols) { // self-appending
 		if (Ncol_ && Nrow_) {
 			double *dataCopy = new double[Nrow_ * Ncol_];
@@ -1813,8 +1709,7 @@ void Matrix::appendCol(const Matrix &cols){
 	} else {
 #ifndef LMRG_CHECK_OFF
 		if (Nrow_ != cols.Nrow_) {
-			cerr << "ERROR: Number of rows (" << cols.Nrow_ << ") in appeneded object not equal to the number of rows (" << Nrow_ << ") in focal matrix" << endl;
-			exit(23);
+			throw("ERROR: Number of rows in appeneded object not equal to the number of rows in focal matrix");
 		}
 #endif
 		double *dataCopy = new double[Nrow_ * Ncol_];
@@ -1834,10 +1729,13 @@ void Matrix::appendCol(const Matrix &cols){
 void Matrix::appendRow(const Matrix &rows){
 #ifndef LMRG_CHECK_OFF
 	if (Nrow_ > rows.Nrow_ + Nrow_) { // happens on wrap-around
-		cerr << "ERROR: Number of rows (" << Nrow_ << ") too big to expand" << endl;
-		exit(2);
+		throw("ERROR: Number of rows too big to expand");
 	}
 #endif
+	// if the other matrix is empty, do nothing
+	if ( (rows.Ncol_ == 0) || (rows.Ncol_ == 0) ) {
+		 return; 
+	}
 	if (this == &rows) { // self-appending
 		if (Nrow_ && Ncol_) {
 			double *dataCopy = new double[Nrow_ * Ncol_];
@@ -1858,8 +1756,7 @@ void Matrix::appendRow(const Matrix &rows){
 	} else {
 #ifndef LMRG_CHECK_OFF
 		if (Ncol_ != rows.Ncol_) {
-			cerr << "ERROR: Number of columns (" << rows.Ncol_ << ") in appeneded object not equal to the number of columns (" << Ncol_ << ") in focal matrix" << endl;
-			exit(23);
+			throw("ERROR: Number of columns in appeneded object not equal to the number of columns in focal matrix");
 		}
 #endif
 		double *dataCopy = new double[Nrow_ * Ncol_];
