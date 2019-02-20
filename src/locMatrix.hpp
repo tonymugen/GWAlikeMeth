@@ -17,7 +17,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 /// C++ matrix class for development.
 /** \file
  * \author Anthony J. Greenberg
@@ -28,8 +27,6 @@
  *
  */
 
-
-
 #ifndef locMatrix_hpp
 #define locMatrix_hpp
 
@@ -39,8 +36,7 @@
 using std::vector;
 using std::string;
 
-
-namespace locMatrix {
+namespace BayesicSpace {
 	class Matrix;
 	/** \defgroup arithmetic Arithmetic operators
 	 *
@@ -477,6 +473,22 @@ namespace locMatrix {
 		 *
 		 */
 		void gemc(const bool &trans, const double &alpha, const Matrix &X, const size_t &xCol, const double &beta, vector<double> &y) const;
+
+		// Sampling functions
+		/** \brief Shuffle columns
+		 *
+		 * Suffle the columns of the current object and return a matrix with of the same size but column order randomly permuted.
+		 *
+		 * \return permuted `Matrix` object
+		 */
+		Matrix colShuffle() const;
+		/** \brief Shuffle rows
+		 *
+		 * Suffle the rows of the current object and return a matrix with of the same size but row order randomly permuted.
+		 *
+		 * \return permuted `Matrix` object
+		 */
+		Matrix rowShuffle() const;
 
 		// Overloaded operators
 		/** \brief Hadamard matrix product

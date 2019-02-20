@@ -30,3 +30,7 @@ gwa <- function(yVec, kVec, repFac, snps, d, Ngen) {
     .Call(`_GWAlikeMeth_gwa`, yVec, kVec, repFac, snps, d, Ngen)
 }
 
+test <- function(vec, nrow, ncol) {
+    .Call(`_GWAlikeMeth_test`, vec, nrow, ncol)
+}
+

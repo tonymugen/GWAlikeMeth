@@ -39,6 +39,7 @@
 
 #include "locMatrix.hpp"
 #include "likeMeth.hpp"
+#include "random.hpp"
 
 //' Random effects fit
 //'
@@ -66,10 +67,10 @@ Rcpp::List reFit(const std::vector<double> &yVec, const std::vector<double> &kVe
 		fixedFac.push_back(static_cast<size_t>(i-1));
 	}
 	try {
-		LikeMeth::MixedModel model(yVec, kVec, fixedFac, d, Ngen, yVec.size()/d);
+		BayesicSpace::MixedModel model(yVec, kVec, fixedFac, d, Ngen, yVec.size()/d);
 
-		locMatrix::Matrix U;       // matrix of random effects
-		locMatrix::Matrix B;       // matrix of intercepts (no other fixed effects)
+		BayesicSpace::Matrix U;    // matrix of random effects
+		BayesicSpace::Matrix B;    // matrix of intercepts (no other fixed effects)
 		std::vector<double> hSq;   // marker heritability
 		std::vector<double> uVec;  // vectorized matrix of random effects
 		std::vector<double> muVec; // vector of means
@@ -104,7 +105,7 @@ Rcpp::List gwa(const std::vector<double> &yVec, const std::vector<double> &kVec,
 		Rcpp::stop("The number of traits must be positive");
 	} else if (Ngen <= 0) {
 		Rcpp::stop("The number of genotypes must be positive");
-	} 
+	}
 
 	std::vector<size_t> fixedFac;
 	for (auto &i : repFac) {
@@ -114,11 +115,11 @@ Rcpp::List gwa(const std::vector<double> &yVec, const std::vector<double> &kVec,
 		fixedFac.push_back(static_cast<size_t>(i-1));
 	}
 	try {
-		std::vector<double> lPval; 
-		LikeMeth::MixedModel model(yVec, kVec, fixedFac, d, Ngen, yVec.size()/d, snps, -9, &lPval);
+		std::vector<double> lPval;
+		BayesicSpace::MixedModel model(yVec, kVec, fixedFac, d, Ngen, yVec.size()/d, &snps, -9, &lPval);
 
-		locMatrix::Matrix U;       // matrix of random effects
-		locMatrix::Matrix B;       // matrix of intercepts (no other fixed effects)
+		BayesicSpace::Matrix U;    // matrix of random effects
+		BayesicSpace::Matrix B;    // matrix of intercepts (no other fixed effects)
 		std::vector<double> hSq;   // marker heritability
 		std::vector<double> uVec;  // vectorized matrix of random effects
 		std::vector<double> muVec; // vector of means
@@ -134,5 +135,14 @@ Rcpp::List gwa(const std::vector<double> &yVec, const std::vector<double> &kVec,
 	}
 
 	return Rcpp::List::create(Rcpp::Named("error", "NaN"));
+}
+
+//[[Rcpp::export(name="test")]]
+Rcpp::List test(const std::vector<double> &vec, const int &nrow, const int &ncol){
+	BayesicSpace::Matrix mat(vec, nrow, ncol);
+	BayesicSpace::Matrix pm = mat.colShuffle();
+	std::vector<double> per;
+	pm.vectorize(per);
+	return Rcpp::List::create(Rcpp::Named("res", per));
 }
 

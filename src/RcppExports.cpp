@@ -36,10 +36,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// test
+Rcpp::List test(const std::vector<double>& vec, const int& nrow, const int& ncol);
+RcppExport SEXP _GWAlikeMeth_test(SEXP vecSEXP, SEXP nrowSEXP, SEXP ncolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type vec(vecSEXP);
+    Rcpp::traits::input_parameter< const int& >::type nrow(nrowSEXP);
+    Rcpp::traits::input_parameter< const int& >::type ncol(ncolSEXP);
+    rcpp_result_gen = Rcpp::wrap(test(vec, nrow, ncol));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_GWAlikeMeth_reFit", (DL_FUNC) &_GWAlikeMeth_reFit, 5},
     {"_GWAlikeMeth_gwa", (DL_FUNC) &_GWAlikeMeth_gwa, 6},
+    {"_GWAlikeMeth_test", (DL_FUNC) &_GWAlikeMeth_test, 3},
     {NULL, NULL, 0}
 };
 

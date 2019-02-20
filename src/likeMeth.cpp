@@ -40,9 +40,8 @@ using std::cerr;
 using std::endl;
 using std::vector;
 using std::thread;
-using locMatrix::Matrix;
 
-using namespace LikeMeth;
+using namespace BayesicSpace;
 
 double EmmREML::operator()(const double &delta){
 
@@ -346,7 +345,7 @@ void MixedModel::oneSNP_(const size_t &idx){
 	Matrix XtY2(0.0, 2, d); // for genotype == 2
 	// populate the X'X and X'Y matrices
 	for (size_t iLn  = 0; iLn < Nln; iLn++) {
-		const int32_t genotype = snps_[iLn + pad];
+		const int32_t genotype = (*snps_)[iLn + pad];
 		if (genotype == misTok_) {
 			continue;
 		}
@@ -390,7 +389,7 @@ void MixedModel::oneSNP_(const size_t &idx){
 	Matrix rsdSq(Npres, d);
 	size_t iPres = 0;
 	for (size_t iLn = 0; iLn < Nln; iLn++) {
-		const int genotype = snps_[iLn + pad];
+		const int genotype = (*snps_)[iLn + pad];
 		if (genotype == misTok_) {
 			continue;
 		}

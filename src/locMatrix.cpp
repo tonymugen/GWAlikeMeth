@@ -43,6 +43,7 @@
 #include <R_ext/BLAS.h>
 
 #include "locMatrix.hpp"
+#include "random.hpp"
 
 using std::endl;
 using std::flush;
@@ -58,11 +59,11 @@ using std::memcpy;
 using std::nan;
 using std::numeric_limits;
 
-using namespace locMatrix;
+using namespace BayesicSpace;
 
 
 // Friend functions
-Matrix locMatrix::operator*(const double &scal, const Matrix &m){
+Matrix BayesicSpace::operator*(const double &scal, const Matrix &m){
 	Matrix res(m);
 	for (size_t iElm = 0; iElm < m.Ncol_*m.Nrow_; iElm++) {
 		res.data_[iElm] *= scal;
@@ -71,7 +72,7 @@ Matrix locMatrix::operator*(const double &scal, const Matrix &m){
 	return res;
 }
 
-Matrix locMatrix::operator+(const double &scal, const Matrix &m){
+Matrix BayesicSpace::operator+(const double &scal, const Matrix &m){
 	Matrix res(m);
 	for (size_t iElm = 0; iElm < m.Ncol_*m.Nrow_; iElm++) {
 		res.data_[iElm] += scal;
@@ -1326,6 +1327,32 @@ void Matrix::gemc(const bool &trans, const double &alpha, const Matrix &X, const
 
 }
 
+Matrix Matrix::colShuffle() const{
+	Matrix out(Nrow_, Ncol_);
+	RanDraw rng;
+	vector<uint64_t> ind = rng.shuffleUint(Ncol_); // shuffled column index
+	for (size_t j = 0; j < Ncol_; ++j) {
+		for (size_t i = 0; i < Nrow_; ++i) {
+			out.setElem(i, ind[j], this->getElem(i, j));
+		}
+	}
+
+	return out;
+}
+
+Matrix Matrix::rowShuffle() const{
+	Matrix out(Nrow_, Ncol_);
+	RanDraw rng;
+	vector<uint64_t> ind = rng.shuffleUint(Nrow_); // shuffled column index
+	for (size_t j = 0; j < Ncol_; ++j) {
+		for (size_t i = 0; i < Nrow_; ++i) {
+			out.setElem(ind[i], j, this->getElem(i, j));
+		}
+	}
+
+	return out;
+}
+
 Matrix Matrix::operator*(const Matrix &m) const{
 #ifndef LMRG_CHECK_OFF
 	if ((Nrow_ != m.Nrow_) || (Ncol_ != m.Ncol_)) {
@@ -1690,7 +1717,7 @@ void Matrix::appendCol(const Matrix &cols){
 #endif
 	// if the other matrix is empty, do nothing
 	if ( (cols.Ncol_ == 0) || (cols.Ncol_ == 0) ) {
-		 return; 
+		return;
 	}
 	if (this == &cols) { // self-appending
 		if (Ncol_ && Nrow_) {
@@ -1734,7 +1761,7 @@ void Matrix::appendRow(const Matrix &rows){
 #endif
 	// if the other matrix is empty, do nothing
 	if ( (rows.Ncol_ == 0) || (rows.Ncol_ == 0) ) {
-		 return; 
+		return;
 	}
 	if (this == &rows) { // self-appending
 		if (Nrow_ && Ncol_) {

@@ -36,11 +36,11 @@
 
 using std::vector;
 using std::move;
-using locMatrix::Matrix;
+using BayesicSpace::Matrix;
 
 
 
-namespace LikeMeth {
+namespace BayesicSpace {
 	class EmmREML;
 	class MixedModel;
 	class SNPblock;
@@ -147,7 +147,7 @@ namespace LikeMeth {
 			 * \param[out] lPval adress of the voectorized \f$ -\log_{10}p \f$ matrix
 			 *
 			 */
-			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> &snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> *snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
 			/** \brief Constructor including SNPs and a fixed effect
 			 *
 			 * \param[in] yvec vectorized (by column) response matrix
@@ -162,7 +162,7 @@ namespace LikeMeth {
 			 * \param[out] lPval adress of the voectorized \f$ -\log_{10}p \f$ matrix
 			 *
 			 */
-			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> &snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, xvec, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> *snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, xvec, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
 			/// Destructor
 			~MixedModel(){};
 
@@ -221,11 +221,11 @@ namespace LikeMeth {
 			 *
 			 */
 			vector<double> delta_;
-			/** \brief SNP matrix
+			/** \brief Pointer to a SNP matrix
 			 *
-			 * Vectorized (by column) SNP matrix. Individuals are in columns, SNPs in rows. TODO: convert to pointer.
+			 * Pointer to a vectorized (by column) SNP matrix. Individuals are in columns, SNPs in rows.
 			 */
-			vector<int32_t> snps_;
+			const vector<int32_t> *snps_;
 			/** \brief Missing genotype token */
 			int32_t misTok_;
 			/** \brief Pointer to the \f$ -\log_{10}p \f$ matrix
