@@ -36,16 +36,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// test
-Rcpp::List test(const std::vector<double>& vec, const int& nrow, const int& ncol);
-RcppExport SEXP _GWAlikeMeth_test(SEXP vecSEXP, SEXP nrowSEXP, SEXP ncolSEXP) {
+// gwaFDR
+Rcpp::List gwaFDR(const std::vector<double>& yVec, const std::vector<double>& kVec, const std::vector<int32_t>& repFac, const std::vector<int32_t>& snps, const int32_t& d, const int32_t& Ngen, const int32_t& nPer);
+RcppExport SEXP _GWAlikeMeth_gwaFDR(SEXP yVecSEXP, SEXP kVecSEXP, SEXP repFacSEXP, SEXP snpsSEXP, SEXP dSEXP, SEXP NgenSEXP, SEXP nPerSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const std::vector<double>& >::type vec(vecSEXP);
-    Rcpp::traits::input_parameter< const int& >::type nrow(nrowSEXP);
-    Rcpp::traits::input_parameter< const int& >::type ncol(ncolSEXP);
-    rcpp_result_gen = Rcpp::wrap(test(vec, nrow, ncol));
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type yVec(yVecSEXP);
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type kVec(kVecSEXP);
+    Rcpp::traits::input_parameter< const std::vector<int32_t>& >::type repFac(repFacSEXP);
+    Rcpp::traits::input_parameter< const std::vector<int32_t>& >::type snps(snpsSEXP);
+    Rcpp::traits::input_parameter< const int32_t& >::type d(dSEXP);
+    Rcpp::traits::input_parameter< const int32_t& >::type Ngen(NgenSEXP);
+    Rcpp::traits::input_parameter< const int32_t& >::type nPer(nPerSEXP);
+    rcpp_result_gen = Rcpp::wrap(gwaFDR(yVec, kVec, repFac, snps, d, Ngen, nPer));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -53,7 +57,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_GWAlikeMeth_reFit", (DL_FUNC) &_GWAlikeMeth_reFit, 5},
     {"_GWAlikeMeth_gwa", (DL_FUNC) &_GWAlikeMeth_gwa, 6},
-    {"_GWAlikeMeth_test", (DL_FUNC) &_GWAlikeMeth_test, 3},
+    {"_GWAlikeMeth_gwaFDR", (DL_FUNC) &_GWAlikeMeth_gwaFDR, 7},
     {NULL, NULL, 0}
 };
 

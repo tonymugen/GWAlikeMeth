@@ -290,10 +290,10 @@ vector<uint64_t> RanDraw::shuffleUint(const uint64_t &N){
 	for (uint64_t k = 0; k < N; ++k) {
 		out[k] = k;
 	}
-	for (uint64_t i = N- 1; i > 0; --i) {
+	for (uint64_t i = N - 1; i > 0; --i) {
 		uint64_t j = this->sampleInt(i+1); // sampleInt(n) samples i < n
-		// three XORs swapping trick
-		if (i != j) { // no move needed if the indexes are the same
+		// the three XORs trick to swap to integers
+		if (i != j) { // no move needed if this is actually the same variable
 			out[i] ^= out[j];
 			out[j] ^= out[i];
 			out[i] ^= out[j];

@@ -39,7 +39,6 @@
 
 #include "locMatrix.hpp"
 #include "likeMeth.hpp"
-#include "random.hpp"
 
 //' Random effects fit
 //'
@@ -87,7 +86,6 @@ Rcpp::List reFit(const std::vector<double> &yVec, const std::vector<double> &kVe
 	return Rcpp::List::create(Rcpp::Named("error", "NaN"));
 }
 
-
 //' GWA with no fixed effect covariates
 //'
 //' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent.
@@ -99,7 +97,7 @@ Rcpp::List reFit(const std::vector<double> &yVec, const std::vector<double> &kVe
 //' @param d number of traits
 //' @param Ngen number of genotypes
 //' @export
-//[[Rcpp::export(name="gwa")]]
+//[[Rcpp::export(name="gwa.internal")]]
 Rcpp::List gwa(const std::vector<double> &yVec, const std::vector<double> &kVec, const std::vector<int32_t> &repFac, const std::vector<int32_t> &snps, const int32_t &d, const int32_t &Ngen){
 	if(d <= 0){
 		Rcpp::stop("The number of traits must be positive");
@@ -137,12 +135,59 @@ Rcpp::List gwa(const std::vector<double> &yVec, const std::vector<double> &kVec,
 	return Rcpp::List::create(Rcpp::Named("error", "NaN"));
 }
 
-//[[Rcpp::export(name="test")]]
-Rcpp::List test(const std::vector<double> &vec, const int &nrow, const int &ncol){
-	BayesicSpace::Matrix mat(vec, nrow, ncol);
-	BayesicSpace::Matrix pm = mat.colShuffle();
-	std::vector<double> per;
-	pm.vectorize(per);
-	return Rcpp::List::create(Rcpp::Named("res", per));
+//' GWA with FDR and no fixed effect covariates
+//'
+//' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates.
+//'
+//' @param yVec vectorized matrix of phenotypes
+//' @param kVec vectorized relationship matrix
+//' @param repFac factor relating genotypes to replicates
+//' @param snps SNP matrix, SNPs as columns
+//' @param d number of traits
+//' @param Ngen number of genotypes
+//' @param nPer number of permutations
+//' @export
+//[[Rcpp::export(name="gwaFDR.internal")]]
+Rcpp::List gwaFDR(const std::vector<double> &yVec, const std::vector<double> &kVec, const std::vector<int32_t> &repFac, const std::vector<int32_t> &snps, const int32_t &d, const int32_t &Ngen, const int32_t &nPer){
+	if(d <= 0){
+		Rcpp::stop("The number of traits must be positive");
+	} else if (Ngen <= 0) {
+		Rcpp::stop("The number of genotypes must be positive");
+	} else if (nPer <= 0) {
+		Rcpp::stop("The number of permutations must be positive");
+	}
+
+	std::vector<size_t> fixedFac;
+	for (auto &i : repFac) {
+		if (i <= 0) {
+			Rcpp::stop("Factor elements must be strictly positive");
+		}
+		fixedFac.push_back(static_cast<size_t>(i-1));
+	}
+	try {
+		std::vector<double> lPval;
+		std::vector<double> fdr;
+		BayesicSpace::MixedModel model(yVec, kVec, fixedFac, d, Ngen, yVec.size()/d, &snps, -9, &lPval);
+
+		BayesicSpace::Matrix U;    // matrix of random effects
+		BayesicSpace::Matrix B;    // matrix of intercepts (no other fixed effects)
+		std::vector<double> hSq;   // marker heritability
+		std::vector<double> uVec;  // vectorized matrix of random effects
+		std::vector<double> muVec; // vector of means
+		model.ranef(U);
+		U.vectorize(uVec);
+		model.fixef(B);
+		B.vectorize(muVec);
+		model.hSq(hSq);
+		model.gwa(nPer, fdr);
+
+		return Rcpp::List::create(Rcpp::Named("ranef", uVec), Rcpp::Named("fixef", muVec), Rcpp::Named("hSq", hSq), Rcpp::Named("lPval", lPval), Rcpp::Named("qVal", fdr));
+	} catch(std::string problem) {
+		Rcpp::stop(problem);
+	}
+
+	return Rcpp::List::create(Rcpp::Named("error", "NaN"));
 }
+
+
 

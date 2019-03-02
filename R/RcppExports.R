@@ -26,11 +26,23 @@ reFit <- function(yVec, kVec, repFac, d, Ngen) {
 #' @param d number of traits
 #' @param Ngen number of genotypes
 #' @export
-gwa <- function(yVec, kVec, repFac, snps, d, Ngen) {
+gwa.internal <- function(yVec, kVec, repFac, snps, d, Ngen) {
     .Call(`_GWAlikeMeth_gwa`, yVec, kVec, repFac, snps, d, Ngen)
 }
 
-test <- function(vec, nrow, ncol) {
-    .Call(`_GWAlikeMeth_test`, vec, nrow, ncol)
+#' GWA with FDR and no fixed effect covariates
+#'
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param repFac factor relating genotypes to replicates
+#' @param snps SNP matrix, SNPs as columns
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @param nPer number of permutations
+#' @export
+gwaFDR.internal <- function(yVec, kVec, repFac, snps, d, Ngen, nPer) {
+    .Call(`_GWAlikeMeth_gwaFDR`, yVec, kVec, repFac, snps, d, Ngen, nPer)
 }
 

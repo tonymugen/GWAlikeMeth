@@ -59,12 +59,6 @@ double EmmREML::operator()(const double &delta){
 
 }
 
-void SNPblock::operator()(){
-	for (size_t kSNP = blockStart_; kSNP < blockStart_ + blockSize_; kSNP++) {
-		mmObj_->oneSNP_(kSNP);
-	}
-}
-
 // MixedModel methods
 
 MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N) : Y_{Matrix(yvec, N, d)}, K_{Matrix(kvec, Ngen, Ngen)}, delta_{vector<double>(d, 0.0)} {
@@ -303,46 +297,139 @@ void MixedModel::gwa(){
 	uXb.resize(0,0);
 
 	// determine the number of theards to use. There typically are two threads per core. It is worth doing no fewer than 200 SNPs per process.
-	size_t   Nsnp          = snps_.size()/K_.getNrows();
-	uint64_t nCores        = thread::hardware_concurrency()/2;
-	uint64_t minBlockSize  = 200;
-	uint64_t maxNumThreads = Nsnp/minBlockSize;
-	uint64_t nSNPsDone     = 0;
+	const size_t   Nsnp          = snps_->size()/K_.getNrows();
+	const uint64_t nCores        = thread::hardware_concurrency()/2;
+	const uint64_t minBlockSize  = 200;
+	const uint64_t maxNumThreads = Nsnp/minBlockSize;
+	uint64_t nSNPsDone           = 0;
 
 	lPval_->resize(Y_.getNcols()*Nsnp);
 
 	if ((maxNumThreads <= 1) || (nCores == 1)) {
 		for (size_t iSNP = 0; iSNP < Nsnp; iSNP++) {
-			oneSNP_(iSNP);
+			oneSNP_(iSNP, Nsnp);
 		}
 	} else{
 		uint64_t nThr      = (maxNumThreads <= nCores ? maxNumThreads : nCores);
 		uint64_t blockSize = Nsnp/nThr;
 		vector<thread> threads(nThr - 1);     // the main thread will do one block
-		for (auto thrIt = threads.begin(); thrIt != threads.end(); ++thrIt) {
-			(*thrIt)   = thread{SNPblock(*this, nSNPsDone, blockSize)}; // has to be done on the fly because I deleted the copy constructor
-			nSNPsDone += blockSize;
+		for (auto &thr : threads) {
+			thr = thread{SNPblock(*this, nSNPsDone, blockSize)}; // has to be done on the fly because I deleted the copy constructor
 		}
 		if (nSNPsDone < Nsnp) { // if there are remaining SNPs to do, process the rest
 			SNPblock block(*this, nSNPsDone, Nsnp-nSNPsDone);
 			block();
 		}
 
-		for (auto thrIt = threads.begin(); thrIt != threads.end(); ++thrIt) {
-			if (thrIt->joinable()) {
-				thrIt->join();
+		for (auto &thr : threads) {
+			if (thr.joinable()) {
+				thr.join();
 			}
 		}
 	}
 }
 
-void MixedModel::oneSNP_(const size_t &idx){
-	const size_t d   = Y_.getNcols();
-	const size_t Nln = Y_.getNrows();
-	const size_t pad = Nln*idx; // where in the vector the current SNP starts
-	Matrix XtX(0.0, 2, 2);  // only lower triangle will be filled
-	Matrix XtY(0.0, 2, d);  // for genotype == 0 || 1
-	Matrix XtY2(0.0, 2, d); // for genotype == 2
+void MixedModel::gwa(const uint32_t &nPer, vector<double> &fdr){
+	this->gwa();
+	const size_t   Nsnp          = snps_->size()/K_.getNrows();
+	const uint64_t nCores        = thread::hardware_concurrency()/2;
+	const uint64_t minBlockSize  = 200;
+	const uint64_t maxNumThreads = Nsnp/minBlockSize;
+	const uint64_t perOff        = Nsnp*nPer;
+
+	vector<double>plPval(lPval_->size()*nPer);
+	Matrix Ytmp(Y_);
+
+	for (uint32_t i = 0; i < nPer; i++) {
+		uint64_t nSNPsDone = 0;
+		Y_ = Ytmp.rowShuffle();
+		const uint64_t snpOff = Nsnp*i;
+		if ((maxNumThreads <= 1) || (nCores == 1)) {
+			for (size_t iSNP = 0; iSNP < Nsnp; iSNP++) {
+				oneSNP_(iSNP, perOff, snpOff, plPval);
+			}
+		} else {
+			uint64_t nThr      = (maxNumThreads <= nCores ? maxNumThreads : nCores);
+			uint64_t blockSize = Nsnp/nThr;
+			vector<thread> threads(nThr - 1);     // the main thread will do one block
+			for (auto &thr : threads) {
+				thr = thread{SNPblock(*this, nSNPsDone, blockSize, plPval, perOff, snpOff)}; // has to be done on the fly because I deleted the copy constructor
+			}
+			if (nSNPsDone < Nsnp) { // if there are remaining SNPs to do, process the rest
+				SNPblock block(*this, nSNPsDone, Nsnp-nSNPsDone, plPval, perOff, snpOff);
+				block();
+			}
+
+			for (auto &thr : threads) {
+				if (thr.joinable()) {
+					thr.join();
+				}
+			}
+		}
+	}
+	fdr.resize(lPval_->size(), 1.0);
+	vector<size_t> perOrder(plPval.size());
+	vector<size_t> order(lPval_->size());
+
+	// sort the real and permuted -lg(p) and calculate FDR for each trait
+	for (size_t jTrait = 0; jTrait < Y_.getNcols(); jTrait++) {
+		const size_t realStart = jTrait*Nsnp;
+		const size_t realEnd   = realStart + Nsnp;
+		const size_t perStart  = jTrait*perOff;
+		const size_t perEnd    = perStart + perOff;
+		quickSort(plPval,  perStart,  perEnd, perOrder);
+		quickSort(*lPval_, realStart, realEnd, order);
+
+		size_t curTopPer = perEnd - 1; // stores the index of the current top permuted -lg(p) that is smaller than the previous real data -lg(p); moving from the end of the perOrder vector
+		double perCt     = 0.0;        // the number of permuted -lg(p)s larger than the current top real -lg(p)
+		double realCt    = 1.0;
+		// examine each real data -lg(p), starting with the largest (index is at the end of the order vector). Note that the trait offsets are already accounted for in order and perOrder vectors
+		for (size_t iOrder = (realEnd - 1); iOrder >= realStart; iOrder--) {
+			if (curTopPer == perStart) {    // reached the bottom of the permuted sample (in reverse order); any remaining FDR values are 1.0 (set at initialization).
+				break;
+			}
+			double fVal  = 0.0;    // the F of Storey and Tibshirani (2003), equation [1] -- the number of false positives
+			double sVal  = 0.0;    // the S of Storey and Tibshirani (2003), equation [1]
+
+			const double curRealScore = (*lPval_)[ order[iOrder] ];
+
+			// For the current real -lg(p), examine the sorted permuted -lg(p)s in order of decrease until we hit one that is smaller than the current real.
+			// The number of permuted -lg(p)s larger than this one is the false positive count (all permuted assumed false)
+			// Do not have to start from the beginning every time. All the permuted values tested with the previous real -lg(p) will be no smaller than the current one.
+			double curPerScore = plPval[ perOrder[curTopPer] ]; // current largest permuted -lg(p)
+			while (curRealScore <= curPerScore){
+				curTopPer--;
+				perCt += 1.0;
+				curPerScore = plPval[ perOrder[curTopPer] ];
+				if (curTopPer == perStart) {
+					break;
+				}
+			}
+			if (perCt > 0.0) {
+				fVal = perCt/static_cast<double>(nPer); // scale by the number of permutations
+				sVal = realCt;
+				fdr[ order[iOrder] ] = (fVal > sVal ? 1.0 : fVal/sVal); // values > 1.0 can occur by chance but are not meaningful
+			} else { // did not find any permuted -lg(p) larger than current real
+				fdr[ order[iOrder] ] = 1.0/static_cast<double>(perOff);
+			}
+			realCt += 1.0;
+			// This test is super importtant: since iOrder is unsigned, but I need the 0-th element, once I hit 0
+			// the next decrement will wrap iOrder around, the test will be TRUE and we will continue with a crazy
+			// out-of-bound value of iOrder, resulting in a segfault
+			if (iOrder == 0) {
+				break;
+			}
+		}
+	}
+}
+
+void MixedModel::oneSNP_(const size_t &idx, const size_t &Nsnp){
+	const size_t d     = Y_.getNcols();
+	const size_t Nln   = Y_.getNrows();
+	const size_t pad   = Nln*idx;      // where in the SNP vector the current SNP starts
+	Matrix XtX(0.0, 2, 2);             // only lower triangle will be filled
+	Matrix XtY(0.0, 2, d);             // for genotype == 0 || 1
+	Matrix XtY2(0.0, 2, d);            // for genotype == 2
 	// populate the X'X and X'Y matrices
 	for (size_t iLn  = 0; iLn < Nln; iLn++) {
 		const int32_t genotype = (*snps_)[iLn + pad];
@@ -405,7 +492,96 @@ void MixedModel::oneSNP_(const size_t &idx){
 		const double sigSq = sSq[jTrt]*XtX.getElem(1, 1)/df;
 		double fStat = pow2(XtY2.getElem(1, jTrt))/sigSq;
 		fStat = df/(df + fStat);
-		(*lPval_)[jTrt + idx*d] = -log10(betai(fStat, df/2.0, 0.5));
+		(*lPval_)[jTrt*Nsnp + idx] = -log10(betai(fStat, df/2.0, 0.5));
 	}
 }
+
+void MixedModel::oneSNP_(const size_t &snpIdx, const size_t &perOff, const size_t &snpOff, vector<double> &lPval){
+	const size_t d      = Y_.getNcols();
+	const size_t Nln    = Y_.getNrows();
+	const size_t pad    = Nln*snpIdx;        // position of the current SNP in the SNP vector (within a permutation)
+	const size_t curSNP = snpOff + snpIdx;   // where in the current trait the SNP is, given the current permutation index
+	Matrix XtX(0.0, 2, 2);                   // only lower triangle will be filled
+	Matrix XtY(0.0, 2, d);                   // for genotype == 0 || 1
+	Matrix XtY2(0.0, 2, d);                  // for genotype == 2
+	// populate the X'X and X'Y matrices
+	for (size_t iLn  = 0; iLn < Nln; iLn++) {
+		const int32_t genotype = (*snps_)[iLn + pad];
+		if (genotype == misTok_) {
+			continue;
+		}
+		XtX.setElem(0, 0, XtX.getElem(0, 0) + 1.0);
+		if (genotype == 0) {
+			for (size_t jTrt = 0; jTrt < d; jTrt++) {
+				XtY.setElem(0, jTrt, XtY.getElem(0, jTrt) + Y_.getElem(iLn, jTrt));
+			}
+		} else if (genotype == 1){
+			XtX.setElem(1, 0, XtX.getElem(1, 0) + 1.0);
+			XtX.setElem(1, 1, XtX.getElem(1, 1) + 1.0);
+			for (size_t jTrt = 0; jTrt < d; jTrt++) {
+				XtY.setElem(0, jTrt, XtY.getElem(0, jTrt) + Y_.getElem(iLn, jTrt));
+				XtY.setElem(1, jTrt, XtY.getElem(1, jTrt) + Y_.getElem(iLn, jTrt));
+			}
+		} else if (genotype == 2){
+			XtX.setElem(1, 0, XtX.getElem(1, 0) + 2.0);
+			XtX.setElem(1, 1, XtX.getElem(1, 1) + 4.0);
+			for (size_t jTrt = 0; jTrt < d; jTrt++) {
+				XtY2.setElem(0, jTrt, XtY2.getElem(0, jTrt) + Y_.getElem(iLn, jTrt));
+				XtY2.setElem(1, jTrt, XtY2.getElem(1, jTrt) + Y_.getElem(iLn, jTrt));
+			}
+		} else {
+			throw("ERROR: unknown genotype in the SNP table in snpReg()");
+		}
+	}
+	XtY2.rowMultiply(2.0, 1);
+	XtY = XtY + XtY2;
+
+	const size_t Npres = static_cast<size_t>(XtX.getElem(0, 0)); // this is the number of non-missing genotypes; save for future use
+	const double df    = XtX.getElem(0, 0) - 2.0;                // degrees of freedom (n - q)
+	XtX.chol();
+	XtX.cholInv();
+	XtY.symm('l', 'l', 1.0, XtX, 0.0, XtY2); // XtY2 is now the coefficient (beta) matrix
+	XtY.resize(3, d); // there are three possible values of Xbeta, one for each genotype; store them in this matrix now
+	for (size_t jTrt = 0; jTrt < d; jTrt++) {
+		XtY.setElem(0, jTrt, XtY2.getElem(0, jTrt));
+		XtY.setElem(1, jTrt, XtY2.getElem(0, jTrt) + XtY2.getElem(1, jTrt));
+		XtY.setElem(2, jTrt, XtY2.getElem(0, jTrt) + 2.0*XtY2.getElem(1, jTrt));
+	}
+	Matrix rsdSq(Npres, d);
+	size_t iPres = 0;
+	for (size_t iLn = 0; iLn < Nln; iLn++) {
+		const int genotype = (*snps_)[iLn + pad];
+		if (genotype == misTok_) {
+			continue;
+		}
+		for (size_t jTrt = 0; jTrt < d; jTrt++) {
+			const double diff = Y_.getElem(iLn, jTrt) - XtY.getElem(genotype, jTrt);
+			rsdSq.setElem(iPres, jTrt, pow2(diff));
+		}
+		iPres++;
+	}
+	vector<double> sSq;
+	rsdSq.colSums(sSq);
+	for (size_t jTrt = 0; jTrt < d; jTrt++) {
+		const double sigSq = sSq[jTrt]*XtX.getElem(1, 1)/df;
+		double fStat = pow2(XtY2.getElem(1, jTrt))/sigSq;
+		fStat = df/(df + fStat);
+		lPval[perOff*jTrt + curSNP] = -log10(betai(fStat, df/2.0, 0.5));
+	}
+}
+
+// SNPblock methods
+void SNPblock::operator()(){
+	if (plPval_ == nullptr) {
+		const size_t Nsnp = mmObj_->snps_->size()/(mmObj_->Y_.getNrows());
+		for (size_t kSNP = blockStart_; kSNP < blockStart_ + blockSize_; kSNP++) {
+			mmObj_->oneSNP_(kSNP, Nsnp);
+		}
+	} else {
+		for (size_t kSNP = blockStart_; kSNP < blockStart_ + blockSize_; kSNP++) {
+			mmObj_->oneSNP_(kSNP, perOff_, snpOff_, *plPval_);
+		}
+	}
+}
+
 

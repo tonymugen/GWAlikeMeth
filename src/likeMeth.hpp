@@ -144,7 +144,7 @@ namespace BayesicSpace {
 			 * \param[in] N number of data points
 			 * \param[in] snps vectorized (by column) SNP matrix
 			 * \param[in] misTok token representing missing genotype data
-			 * \param[out] lPval adress of the voectorized \f$ -\log_{10}p \f$ matrix
+			 * \param[out] lPval address of the voectorized \f$ -\log_{10}p \f$ matrix
 			 *
 			 */
 			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> *snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
@@ -159,7 +159,7 @@ namespace BayesicSpace {
 			 * \param[in] N number of data points
 			 * \param[in] snps vectorized (by column) SNP matrix
 			 * \param[in] misTok token representing missing genotype data
-			 * \param[out] lPval adress of the voectorized \f$ -\log_{10}p \f$ matrix
+			 * \param[out] lPval address of the voectorized \f$ -\log_{10}p \f$ matrix
 			 *
 			 */
 			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> *snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, xvec, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
@@ -174,7 +174,7 @@ namespace BayesicSpace {
 			 *
 			 * \param[in] in object to be moved
 			 */
-			MixedModel(MixedModel &&in) : Y_{move(in.Y_)}, K_{move(in.K_)}, Z_{move(in.Z_)}, X_{move(in.X_)}, u_{move(in.u_)}, delta_{move(in.delta_)}, snps_{move(in.snps_)}, misTok_{in.misTok_}, lPval_{move(in.lPval_)} {};
+			MixedModel(MixedModel &&in) : Y_{move(in.Y_)}, K_{move(in.K_)}, Z_{move(in.Z_)}, X_{move(in.X_)}, u_{move(in.u_)}, delta_{move(in.delta_)}, snps_{move(in.snps_)}, misTok_{in.misTok_}, lPval_{move(in.lPval_)} {in.snps_ = nullptr; in.lPval_ = nullptr; };
 			/** \brief Move assignment operator (not impplemented) */
 			MixedModel & operator=(MixedModel &&in) = delete;
 
@@ -202,6 +202,15 @@ namespace BayesicSpace {
 			 *
 			 */
 			void gwa();
+			/** \brief Genome-wide association with FDR
+			 *
+			 * The same as `gwa()`, but does permutations to calculate emprical FDR for each SNP.
+			 *
+			 * \param[in] nPer number of permutations
+			 * \param[out] fdr vectorized (by column) matrix of FDR values
+			 *
+			 */
+			void gwa(const uint32_t &nPer, vector<double> &fdr);
 		private:
 			/** \brief Responce matrix */
 			Matrix Y_;
@@ -223,7 +232,7 @@ namespace BayesicSpace {
 			vector<double> delta_;
 			/** \brief Pointer to a SNP matrix
 			 *
-			 * Pointer to a vectorized (by column) SNP matrix. Individuals are in columns, SNPs in rows.
+			 * Pointer to a vectorized (by column) SNP matrix. Individuals are in rows, SNPs in columns.
 			 */
 			const vector<int32_t> *snps_;
 			/** \brief Missing genotype token */
@@ -236,9 +245,21 @@ namespace BayesicSpace {
 			/** \brief Single SNP regression
 			 *
 			 * \param[in] idx index of the SNP
+			 * \param[in] Nsnp number of SNPs
 			 *
 			 */
-			void oneSNP_(const size_t &idx);
+			void oneSNP_(const size_t &idx, const size_t &Nsnp);
+			/** \brief Single SNP regression for permutations
+			 *
+			 * The permuted \f$ -\log_{10}p \f$ vector has the values for each trait continuous in memory, each permutation after the other: trait1:per1|per2|...|perN->trait2:per1|per2|...|perN->...
+			 *
+			 * \param[in] snpIdx index of the current SNP
+			 * \param[in] perOff permutation offset (`nPer*Nsnp`)
+			 * \param[in] snpOff SNP offset for each trait (`Nsnp*perIdx`)
+			 * \param[out] lPval vector of permutation \f$ -\log_{10}p \f$
+			 *
+			 */
+			void oneSNP_(const size_t &snpIdx, const size_t &perOff, const size_t &snpOff, vector<double> &lPval);
 	};
 
 	/** \brief A SNP block functor class
@@ -249,17 +270,30 @@ namespace BayesicSpace {
 	class SNPblock {
 	public:
 		/// Default constructor
-		SNPblock() : mmObj_{nullptr}, blockSize_{0}, blockStart_{0} {};
+		SNPblock() : mmObj_{nullptr}, blockSize_{0}, blockStart_{0}, plPval_{nullptr}, perOff_{0}, snpOff_{0} {};
 		/** \brief Constructor
 		 *
-		 * Sets up the pointer to the `MixedModel` object calling the current instance of this functor
+		 * Sets up the pointer to the `MixedModel` object calling the current instance of this functor.
 		 *
-		 * \param[in] parent address of the `MixedModel` object calling this functor
+		 * \param[in,out] parent address of the `MixedModel` object calling this functor
 		 * \param[in] bStart block start position
 		 * \param[in] bSize block size (number of SNPs)
 		 *
 		 */
-		SNPblock(MixedModel &parent, const size_t &bStart, const size_t &bSize): mmObj_(&parent), blockSize_(bSize), blockStart_(bStart) {};
+		SNPblock(MixedModel &parent, const size_t &bStart, const size_t &bSize): mmObj_{&parent}, blockSize_{bSize}, blockStart_{bStart}, plPval_{nullptr}, perOff_{0}, snpOff_{0} {};
+		/** \brief Constructor for permutations
+		 *
+		 * Sets up the pointer to the `MixedModel` object calling the current instance of this functor, adding the info to work on permuted data.
+		 *
+		 * \param[in,out] parent address of the `MixedModel` object calling this functor
+		 * \param[in] bStart block start position
+		 * \param[in] bSize block size (number of SNPs)
+		 * \param[out] plPval address of the permuted \f$-\log_{10}p \f$ vector
+		 * \param[in] perOff permutation offset (`Nsnp*nPer`)
+		 * \param[in] snpOff SNP offset (`Nsnp*perIdx`)
+		 *
+		 */
+		SNPblock(MixedModel &parent, const size_t &bStart, const size_t &bSize, vector<double> &plPval, const size_t &perOff, const size_t &snpOff): mmObj_{&parent}, blockSize_{bSize}, blockStart_{bStart}, plPval_{&plPval}, perOff_{perOff}, snpOff_{snpOff} {};
 
 		/// Destructor
 		~SNPblock(){ mmObj_ = nullptr; };
@@ -269,7 +303,7 @@ namespace BayesicSpace {
 		/// Copy assignment operator (not implemented)
 		SNPblock & operator=(const SNPblock &) = delete;
 		/// Move constructor
-		SNPblock(SNPblock &&in) : mmObj_{move(in.mmObj_)}, blockSize_{move(in.blockSize_)}, blockStart_{move(in.blockStart_)} { in.mmObj_ = nullptr; };
+		SNPblock(SNPblock &&in) : mmObj_{move(in.mmObj_)}, blockSize_{move(in.blockSize_)}, blockStart_{move(in.blockStart_)}, plPval_{move(in.plPval_)}, perOff_{move(in.perOff_)}, snpOff_{move(in.snpOff_)} { in.mmObj_ = nullptr; in.plPval_ = nullptr; };
 
 		/** \brief Function operator
 		 *
@@ -284,7 +318,18 @@ namespace BayesicSpace {
 		size_t blockSize_;
 		/// Start position of the block in the SNP array
 		size_t blockStart_;
-
+		/// Pointer to permuted \f$ -\log_{10}p \f$ vector
+		vector<double> *plPval_;
+		/** \brief Permutation offset
+		 *
+		 * The `Nsnp*nPer` value fed to `oneSNP()` from the `MixedModel` class.
+		 */
+		size_t perOff_;
+		/** \brief SNP offset
+		 *
+		 * The `Nsnp*perIdx` value fed to `oneSNP()` from the `MixedModel` class.
+		 */
+		size_t snpOff_;
 	};
 
 }
