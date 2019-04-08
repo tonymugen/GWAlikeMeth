@@ -111,7 +111,16 @@ namespace BayesicSpace {
 		public:
 			/** \brief Default constructor  */
 			MixedModel() : misTok_{0} {};
-			/** \brief Constructor with no fixed effect
+			/** \brief Basic constructor
+			 *
+			 * \param[in] yvec vectorized (by column) response matrix
+			 * \param[in] kvec vectorized relationship matrix
+			 * \param[in] d number of traits
+			 * \param[in] Ngen number of genotypes
+			 *
+			 */
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const size_t &d, const size_t &Ngen);
+			/** \brief Constructor with replication
 			 *
 			 * \param[in] yvec vectorized (by column) response matrix
 			 * \param[in] kvec vectorized relationship matrix
@@ -122,7 +131,17 @@ namespace BayesicSpace {
 			 *
 			 */
 			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N);
-			/** \brief Constructor including a fixed effect
+			/** \brief Constructor including a fixed effect but no replication
+			 *
+			 * \param[in] yvec vectorized (by column) response matrix
+			 * \param[in] kvec vectorized relationship matrix
+			 * \param[in] xvec vectorized (by column) matrix of fixed effects
+			 * \param[in] d number of traits
+			 * \param[in] Ngen number of genotypes
+			 *
+			 */
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &xvec, const size_t &d, const size_t &Ngen);
+			/** \brief Constructor including a fixed effect and replication
 			 *
 			 * \param[in] yvec vectorized (by column) response matrix
 			 * \param[in] kvec vectorized relationship matrix
@@ -134,7 +153,19 @@ namespace BayesicSpace {
 			 *
 			 */
 			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N);
-			/** \brief Constructor with SNPs but no fixed effect
+			/** \brief Constructor with SNPs
+			 *
+			 * \param[in] yvec vectorized (by column) response matrix
+			 * \param[in] kvec vectorized relationship matrix
+			 * \param[in] d number of traits
+			 * \param[in] Ngen number of genotypes
+			 * \param[in] snps vectorized (by column) SNP matrix
+			 * \param[in] misTok token representing missing genotype data
+			 * \param[out] lPval address of the voectorized \f$ -\log_{10}p \f$ matrix
+			 *
+			 */
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const size_t &d, const size_t &Ngen, const vector<int32_t> *snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, d, Ngen) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
+			/** \brief Constructor with SNPs and replication
 			 *
 			 * \param[in] yvec vectorized (by column) response matrix
 			 * \param[in] kvec vectorized relationship matrix
@@ -148,7 +179,20 @@ namespace BayesicSpace {
 			 *
 			 */
 			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N, const vector<int32_t> *snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, repFac, d, Ngen, N) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
-			/** \brief Constructor including SNPs and a fixed effect
+			/** \brief Constructor with SNPs and a fixed effect but no replication
+			 *
+			 * \param[in] yvec vectorized (by column) response matrix
+			 * \param[in] kvec vectorized relationship matrix
+			 * \param[in] xvec vectorized (by column) matrix of fixed effects
+			 * \param[in] d number of traits
+			 * \param[in] Ngen number of genotypes
+			 * \param[in] snps vectorized (by column) SNP matrix
+			 * \param[in] misTok token representing missing genotype data
+			 * \param[out] lPval address of the voectorized \f$ -\log_{10}p \f$ matrix
+			 *
+			 */
+			MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const vector<int32_t> *snps, const int32_t &misTok, vector<double> *lPval) : MixedModel(yvec, kvec, xvec, d, Ngen) {snps_ = snps; misTok_ = misTok; lPval_ = lPval; };
+			/** \brief Constructor with SNPs, fixed effect, and replication
 			 *
 			 * \param[in] yvec vectorized (by column) response matrix
 			 * \param[in] kvec vectorized relationship matrix
@@ -200,17 +244,19 @@ namespace BayesicSpace {
 			 * Estimates regression \f$ -\log_{10}p \f$ for SNPs with missing genotype data and multiple traits in a table. Genotypes should be coded as (0,1,2) for homozygous, hetereozygous and homozygous alternative. It should run faster of the major allele homozygotes are coded as 0.
 			 * Each trait is treated separately but it helps to include multiple traits because some calculations are common and can be performed only once. The \f$ -\log_{10}p \f$ matrix has each trait in a column.
 			 *
+			 * \param[in] nThr number of threads; set automatically if 0
 			 */
-			void gwa();
+			void gwa(uint32_t nThr);
 			/** \brief Genome-wide association with FDR
 			 *
 			 * The same as `gwa()`, but does permutations to calculate emprical FDR for each SNP.
 			 *
 			 * \param[in] nPer number of permutations
+			 * \param[in] nThr number of threads; set automatically if 0
 			 * \param[out] fdr vectorized (by column) matrix of FDR values
 			 *
 			 */
-			void gwa(const uint32_t &nPer, vector<double> &fdr);
+			void gwa(const uint32_t &nPer, uint32_t nThr, vector<double> &fdr);
 		private:
 			/** \brief Responce matrix */
 			Matrix Y_;

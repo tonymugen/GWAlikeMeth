@@ -3,6 +3,19 @@
 
 #' Random effects fit
 #'
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept and no replication). Operates on any number of traits at once, but treats them as independent.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @export
+reFit <- function(yVec, kVec, d, Ngen) {
+    .Call(`_GWAlikeMeth_reFit`, yVec, kVec, d, Ngen)
+}
+
+#' Random effects fit with replication
+#'
 #' Fits a random-effects model (with no fixed effect covariates other than the intercept). Operates on any number of traits at once, but treats them as independent.
 #'
 #' @param yVec vectorized matrix of phenotypes
@@ -11,13 +24,73 @@
 #' @param d number of traits
 #' @param Ngen number of genotypes
 #' @export
-reFit <- function(yVec, kVec, repFac, d, Ngen) {
-    .Call(`_GWAlikeMeth_reFit`, yVec, kVec, repFac, d, Ngen)
+reFitR <- function(yVec, kVec, repFac, d, Ngen) {
+    .Call(`_GWAlikeMeth_reFitR`, yVec, kVec, repFac, d, Ngen)
 }
 
-#' GWA with no fixed effect covariates
+#' Random effects fit with fixed effects but no replication
 #'
-#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent.
+#' Fits a random-effects model (with fixed effect covariates). Operates on any number of traits at once, but treats them as independent.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param xVec vectorized matrix of fixed effects
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @export
+reFitF <- function(yVec, kVec, xvec, d, Ngen) {
+    .Call(`_GWAlikeMeth_reFitF`, yVec, kVec, xvec, d, Ngen)
+}
+
+#' Random effects fit with fixed effects and replication
+#'
+#' Fits a random-effects model (with fixed effect covariates and replicated genotype measurements). Operates on any number of traits at once, but treats them as independent.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param repFac factor relating genotypes to replicates
+#' @param xVec vectorized matrix of fixed effects
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @export
+reFitRF <- function(yVec, kVec, repFac, xvec, d, Ngen) {
+    .Call(`_GWAlikeMeth_reFitRF`, yVec, kVec, repFac, xvec, d, Ngen)
+}
+
+#' Simple GWA
+#'
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept and no replicated measurement of genotypes) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. If the number of threads is set to zero, all available cores are used.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param snps SNP matrix, SNPs as columns
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @param nThr number of threads
+#' @export
+gwa.internal <- function(yVec, kVec, snps, d, Ngen, nThr) {
+    .Call(`_GWAlikeMeth_gwa`, yVec, kVec, snps, d, Ngen, nThr)
+}
+
+#' GWA with fixed effects
+#'
+#' Fits a random-effects model (with fixed effect covariates but no replicated measurement of genotypes) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. If the number of threads is set to zero, all available cores are used.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param xVec vectorized fixed effect matrix
+#' @param snps SNP matrix, SNPs as columns
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @param nThr number of threads
+#' @export
+gwaF.internal <- function(yVec, kVec, xVec, snps, d, Ngen, nThr) {
+    .Call(`_GWAlikeMeth_gwaF`, yVec, kVec, xVec, snps, d, Ngen, nThr)
+}
+
+#' GWA with replication
+#'
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept but with genotypes measured in replicates) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. All available cores will be used if the number of threads is set to zero.
 #'
 #' @param yVec vectorized matrix of phenotypes
 #' @param kVec vectorized relationship matrix
@@ -25,14 +98,48 @@ reFit <- function(yVec, kVec, repFac, d, Ngen) {
 #' @param snps SNP matrix, SNPs as columns
 #' @param d number of traits
 #' @param Ngen number of genotypes
+#' @param nThr number of threads
 #' @export
-gwa.internal <- function(yVec, kVec, repFac, snps, d, Ngen) {
-    .Call(`_GWAlikeMeth_gwa`, yVec, kVec, repFac, snps, d, Ngen)
+gwaR.internal <- function(yVec, kVec, repFac, snps, d, Ngen, nThr) {
+    .Call(`_GWAlikeMeth_gwaR`, yVec, kVec, repFac, snps, d, Ngen, nThr)
 }
 
-#' GWA with FDR and no fixed effect covariates
+#' GWA with replication and fixed effects
 #'
-#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates.
+#' Fits a random-effects model (with fixed effect covariates and genotypes measured in replicates) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. All available cores will be used if the number of threads is set to zero.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param repFac factor relating genotypes to replicates
+#' @param xVec vectorized relationship matrix
+#' @param snps SNP matrix, SNPs as columns
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @param nThr number of threads
+#' @export
+gwaRF.internal <- function(yVec, kVec, repFac, xVec, snps, d, Ngen, nThr) {
+    .Call(`_GWAlikeMeth_gwaRF`, yVec, kVec, repFac, xVec, snps, d, Ngen, nThr)
+}
+
+#' Simple GWA with FDR
+#'
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept and no replication) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. If the number of threads is set to 0, the number is picked automatically.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param snps SNP matrix, SNPs as columns
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @param nPer number of permutations
+#' @param nThr number of threads
+#' @export
+gwaFDR.internal <- function(yVec, kVec, snps, d, Ngen, nPer, nThr) {
+    .Call(`_GWAlikeMeth_gwaFDR`, yVec, kVec, snps, d, Ngen, nPer, nThr)
+}
+
+#' GWA with FDR and replication
+#'
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
 #'
 #' @param yVec vectorized matrix of phenotypes
 #' @param kVec vectorized relationship matrix
@@ -41,8 +148,44 @@ gwa.internal <- function(yVec, kVec, repFac, snps, d, Ngen) {
 #' @param d number of traits
 #' @param Ngen number of genotypes
 #' @param nPer number of permutations
+#' @param nThr number of threads
 #' @export
-gwaFDR.internal <- function(yVec, kVec, repFac, snps, d, Ngen, nPer) {
-    .Call(`_GWAlikeMeth_gwaFDR`, yVec, kVec, repFac, snps, d, Ngen, nPer)
+gwaFDRR.internal <- function(yVec, kVec, repFac, snps, d, Ngen, nPer, nThr) {
+    .Call(`_GWAlikeMeth_gwaFDRR`, yVec, kVec, repFac, snps, d, Ngen, nPer, nThr)
+}
+
+#' GWA with FDR and fixed effects
+#'
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param xVec vectorized matrix of fixed effects
+#' @param snps SNP matrix, SNPs as columns
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @param nPer number of permutations
+#' @param nThr number of threads
+#' @export
+gwaFDRF.internal <- function(yVec, kVec, xVec, snps, d, Ngen, nPer, nThr) {
+    .Call(`_GWAlikeMeth_gwaFDRF`, yVec, kVec, xVec, snps, d, Ngen, nPer, nThr)
+}
+
+#' GWA with FDR, replication, and fixed effects
+#'
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
+#'
+#' @param yVec vectorized matrix of phenotypes
+#' @param kVec vectorized relationship matrix
+#' @param repFac factor relating genotypes to replicates
+#' @param xVec vectorized matrix of fixed effects
+#' @param snps SNP matrix, SNPs as columns
+#' @param d number of traits
+#' @param Ngen number of genotypes
+#' @param nPer number of permutations
+#' @param nThr number of threads
+#' @export
+gwaFDRRF.internal <- function(yVec, kVec, repFac, xVec, snps, d, Ngen, nPer, nThr) {
+    .Call(`_GWAlikeMeth_gwaFDRRF`, yVec, kVec, repFac, xVec, snps, d, Ngen, nPer, nThr)
 }
 
