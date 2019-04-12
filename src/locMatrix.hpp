@@ -763,6 +763,38 @@ namespace BayesicSpace {
 		 *
 		 */
 		void appendRow(const Matrix &rows);
+		/** \brief Drop left columns
+		 *
+		 * Delete columns to the left of the one marked by the provided index.
+		 *
+		 * \param[in] newFirst index of the new first column
+		 *
+		 */
+		void dropLeftCols(const size_t &newFirst);
+		/** \brief Drop right columns
+		 *
+		 * Delete columns to the right of the one marked by the provided index.
+		 *
+		 * \param[in] newLast index of the new last column
+		 *
+		 */
+		void dropRightCols(const size_t &newLast);
+		/** \brief Drop top rows
+		 *
+		 * Delete rows higher than the one marked by the provided index.
+		 *
+		 * \param[in] newTop index of the new top row
+		 *
+		 */
+		void dropTopRows(const size_t &newTop);
+		/** \brief Drop bottom rows
+		 *
+		 * Delete rows lower than the one marked by the provided index.
+		 *
+		 * \param[in] newBottom index of the new bottom row
+		 *
+		 */
+		void dropBottomRows(const size_t &newBottom);
 	private:
 		double *data_;
 		size_t Nrow_;

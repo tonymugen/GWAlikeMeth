@@ -166,8 +166,8 @@ Matrix::Matrix(const string &fileName, const char &delim): Nrow_(0), Ncol_(0) {
 	data_ = new double[Ntot];
 
 	size_t jCol = 0;
-	for (auto flIt = firstLine.begin(); flIt != firstLine.end(); ++flIt) {
-		data_[Nrow_*jCol] = *flIt; // just the first row
+	for (auto &iFL : firstLine) {
+		data_[Nrow_*jCol] = iFL; // just the first row
 		jCol++;
 	}
 	firstLine.resize(0);
@@ -184,7 +184,7 @@ Matrix::Matrix(const string &fileName, const char &delim): Nrow_(0), Ncol_(0) {
 		}
 		iRow++;
 		if (jCol != Ncol_) {
-			string errMsg = "ERROR: in file " + fileName + " a not all lines have the same number of columns (Matrix constructor from file)";
+			string errMsg = "ERROR: in file " + fileName + " not all lines have the same number of columns (Matrix constructor from file)";
 			throw errMsg;
 		}
 	}
@@ -578,9 +578,9 @@ void Matrix::eigen(const char &tri, Matrix &U, vector<double> &lam){
 	dsyevr_(&jobz, &range, &uplo, &N, data_, &lda, &vl, &vu, &il, &iu, &abstol, &M, lam.data(), U.data_, &ldz, isuppz.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
 
 	// set tiny eigenvalues to exactly zero
-	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
-		if (fabs(*lamIt) <= abstol) {
-			(*lamIt) = 0.0;
+	for (auto &l : lam) {
+		if (fabs(l) <= abstol) {
+			l = 0.0;
 		}
 	}
 
@@ -654,9 +654,9 @@ void Matrix::eigen(const char &tri, const size_t &n, Matrix &U, vector<double> &
 	dsyevr_(&jobz, &range, &uplo, &N, data_, &lda, &vl, &vu, &il, &iu, &abstol, &M, lam.data(), U.data_, &ldz, isuppz.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
 
 	// set tiny eigenvalues to exactly zero
-	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
-		if (fabs(*lamIt) <= abstol) {
-			(*lamIt) = 0.0;
+	for (auto &l : lam) {
+		if (fabs(l) <= abstol) {
+			l = 0.0;
 		}
 	}
 
@@ -727,9 +727,9 @@ void Matrix::eigenSafe(const char &tri, Matrix &U, vector<double> &lam){
 	delete [] dataCopy;
 
 	// set tiny eigenvalues to exactly zero
-	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
-		if (fabs(*lamIt) <= abstol) {
-			(*lamIt) = 0.0;
+	for (auto &l : lam) {
+		if (fabs(l) <= abstol) {
+			l = 0.0;
 		}
 	}
 
@@ -765,13 +765,12 @@ void Matrix::premultZ(const Matrix &Z){
 
 	for (size_t oldRow = 0; oldRow < Z.getNcols(); oldRow++) {
 		// going through all the rows of Z that correspond to the old row of M
-		for (auto facIt = fac[oldRow].begin(); facIt != fac[oldRow].end(); ++facIt) {
-			// copying the row of M
+		for (auto &f : fac[oldRow]) {
+			//copying the row of M
 			for (size_t jCol = 0; jCol < Ncol_; jCol++) {
-				data_[Z.getNrows()*jCol + (*facIt)] = dataCopy[Nrow_*jCol + oldRow];
+				data_[Z.getNrows()*jCol + f] = dataCopy[Nrow_*jCol + oldRow];
 			}
 		}
-
 	}
 	Nrow_ = Z.getNrows();
 
@@ -806,13 +805,12 @@ void Matrix::premultZ(const Matrix &Z, Matrix &out) const {
 
 	for (size_t oldRow = 0; oldRow < Z.getNcols(); oldRow++) {
 		// going through all the rows of Z that correspond to the old row of M
-		for (auto facIt = fac[oldRow].begin(); facIt != fac[oldRow].end(); ++facIt) {
+		for (auto &f : fac[oldRow]) {
 			// copying the row of M
 			for (size_t jCol = 0; jCol < Ncol_; jCol++) {
-				out.data_[Z.getNrows()*jCol + (*facIt)] = data_[Nrow_*jCol + oldRow];
+				out.data_[Z.getNrows()*jCol + f] = data_[Nrow_*jCol + oldRow];
 			}
 		}
-
 	}
 
 }
@@ -846,13 +844,12 @@ void Matrix::premultZt(const Matrix &Z){
 
 	for (size_t newRow = 0; newRow < Z.getNcols(); newRow++) {
 		// going through all the rows of Z that correspond to the new (summed) row of M
-		for (auto facIt = fac[newRow].begin(); facIt != fac[newRow].end(); ++facIt) {
+		for (auto &f : fac[newRow]) {
 			// summing the rows of M within the group defined by rows of Z
 			for (size_t jCol = 0; jCol < Ncol_; jCol++) {
-				data_[Z.getNcols()*jCol + newRow] += dataCopy[Nrow_*jCol + (*facIt)];
+				data_[Z.getNcols()*jCol + newRow] += dataCopy[Nrow_*jCol + f];
 			}
 		}
-
 	}
 	Nrow_ = Z.getNcols();
 
@@ -890,13 +887,12 @@ void Matrix::premultZt(const Matrix &Z, Matrix &out) const {
 
 	for (size_t newRow = 0; newRow < Z.getNcols(); newRow++) {
 		// going through all the rows of Z that correspond to the new row of M
-		for (auto facIt = fac[newRow].begin(); facIt != fac[newRow].end(); ++facIt) {
+		for (auto &f : fac[newRow]) {
 			// summing the rows of M within the group defined by rows of Z
 			for (size_t jCol = 0; jCol < Ncol_; jCol++) {
-				out.data_[Z.getNcols()*jCol + newRow] += data_[Nrow_*jCol + (*facIt)];
+				out.data_[Z.getNcols()*jCol + newRow] += data_[Nrow_*jCol + f];
 			}
 		}
-
 	}
 
 }
@@ -930,13 +926,12 @@ void Matrix::postmultZ(const Matrix &Z){
 
 	for (size_t newCol = 0; newCol < Z.getNcols(); newCol++) {
 		// going through all the rows of Z that correspond to the new column of M
-		for (auto facIt = fac[newCol].begin(); facIt != fac[newCol].end(); ++facIt) {
+		for (auto &f : fac[newCol]) {
 			// summing the rows of M within the group defined by rows of Z
 			for (size_t iRow = 0; iRow < Nrow_; iRow++) {
-				data_[Z.getNcols()*newCol + iRow] += dataCopy[Nrow_*(*facIt) + iRow];
+				data_[Z.getNcols()*newCol + iRow] += dataCopy[Nrow_*f + iRow];
 			}
 		}
-
 	}
 	Ncol_ = Z.getNcols();
 	delete [] dataCopy;
@@ -971,13 +966,12 @@ void Matrix::postmultZ(const Matrix &Z, Matrix &out) const{
 
 	for (size_t newCol = 0; newCol < Z.getNcols(); newCol++) {
 		// going through all the rows of Z that correspond to the new column of M
-		for (auto facIt = fac[newCol].begin(); facIt != fac[newCol].end(); ++facIt) {
+		for (auto &f : fac[newCol]) {
 			// summing the rows of M within the group defined by rows of Z
 			for (size_t iRow = 0; iRow < Nrow_; iRow++) {
-				out.data_[Z.getNcols()*newCol + iRow] += data_[Nrow_*(*facIt) + iRow];
+				out.data_[Z.getNcols()*newCol + iRow] += data_[Nrow_*f + iRow];
 			}
 		}
-
 	}
 
 }
@@ -1010,9 +1004,9 @@ void Matrix::postmultZt(const Matrix &Z){
 
 	for (size_t oldCol = 0; oldCol < Z.getNcols(); oldCol++) {
 		// going through all the rows of Z that correspond to the old column of M
-		for (auto facIt = fac[oldCol].begin(); facIt != fac[oldCol].end(); ++facIt) {
+		for (auto &f : fac[oldCol]) {
 			// copying the column of M
-			memcpy(data_ + (*facIt)*Nrow_, dataCopy + oldCol*Nrow_, Nrow_*sizeof(double));
+			memcpy(data_ + f*Nrow_, dataCopy + oldCol*Nrow_, Nrow_*sizeof(double));
 		}
 	}
 
@@ -1050,9 +1044,9 @@ void Matrix::postmultZt(const Matrix &Z, Matrix &out) const{
 
 	for (size_t oldCol = 0; oldCol < Z.getNcols(); oldCol++) {
 		// going through all the rows of Z that correspond to the old column of M
-		for (auto facIt = fac[oldCol].begin(); facIt != fac[oldCol].end(); ++facIt) {
+		for (auto &f : fac[oldCol]) {
 			// copying the column of M
-			memcpy(out.data_ + (*facIt)*Nrow_, data_ + oldCol*Nrow_, Nrow_*sizeof(double));
+			memcpy(out.data_ + f*Nrow_, data_ + oldCol*Nrow_, Nrow_*sizeof(double));
 		}
 	}
 
@@ -1801,4 +1795,74 @@ void Matrix::appendRow(const Matrix &rows){
 	}
 }
 
+void Matrix::dropLeftCols(const size_t &newFirst){
+#ifndef LMRG_CHECK_OFF
+	if (newFirst >= Ncol_) {
+		throw("ERROR: New first column index is past the last column in dropLeftCols()");
+	}
+#endif
+	double *dataCopy = new double[Nrow_ * Ncol_];
+	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
+	delete [] data_;
+
+	Ncol_ -= newFirst;
+	data_  = new double[Ncol_ * Nrow_];
+	memcpy(data_, dataCopy + newFirst*Nrow_, (Nrow_ * Ncol_)*sizeof(double));
+	delete [] dataCopy;
+}
+void Matrix::dropRightCols(const size_t &newLast){
+#ifndef LMRG_CHECK_OFF
+	if (newLast >= Ncol_) {
+		throw("ERROR: New last column index is past the last column in dropRightCols()");
+	}
+#endif
+	double *dataCopy = new double[Nrow_ * Ncol_];
+	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
+	delete [] data_;
+
+	Ncol_ = newLast + 1;
+	data_ = new double[Ncol_ * Nrow_];
+	memcpy(data_, dataCopy, (Nrow_ * Ncol_)*sizeof(double));
+	delete [] dataCopy;
+}
+void Matrix::dropTopRows(const size_t &newTop){
+#ifndef LMRG_CHECK_OFF
+	if (newTop >= Nrow_) {
+		throw("ERROR: New first row index is past the last row in dropTopRows()");
+	}
+#endif
+	double *dataCopy = new double[Nrow_ * Ncol_];
+	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
+	delete [] data_;
+
+	const size_t oldNrow = Nrow_;
+
+	Nrow_ -= newTop;
+	data_  = new double[Nrow_ * Ncol_];
+	// copying the discontinuous rows by copying chunks of columns
+	for (size_t jCol = 0; jCol < Ncol_; jCol++) {
+		memcpy(data_ + Nrow_*jCol, dataCopy + newTop + oldNrow*jCol, Nrow_*sizeof(double));
+	}
+	delete [] dataCopy;
+}
+void Matrix::dropBottomRows(const size_t &newBottom){
+#ifndef LMRG_CHECK_OFF
+	if (newBottom >= Nrow_) {
+		throw("ERROR: New last row index is past the last row in dropBottomRows()");
+	}
+#endif
+	double *dataCopy = new double[Nrow_ * Ncol_];
+	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
+	delete [] data_;
+
+	const size_t oldNrow = Nrow_;
+
+	Nrow_ = newBottom + 1;
+	data_  = new double[Nrow_ * Ncol_];
+	// copying the discontinuous rows by copying chunks of columns
+	for (size_t jCol = 0; jCol < Ncol_; jCol++) {
+		memcpy(data_ + Nrow_*jCol, dataCopy + oldNrow*jCol, Nrow_*sizeof(double));
+	}
+	delete [] dataCopy;
+}
 
