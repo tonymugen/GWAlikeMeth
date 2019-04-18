@@ -35,33 +35,33 @@ BEGIN_RCPP
 END_RCPP
 }
 // reFitF
-Rcpp::List reFitF(const std::vector<double>& yVec, const std::vector<double>& kVec, const std::vector<double>& xvec, const int32_t& d, const int32_t& Ngen);
-RcppExport SEXP _GWAlikeMeth_reFitF(SEXP yVecSEXP, SEXP kVecSEXP, SEXP xvecSEXP, SEXP dSEXP, SEXP NgenSEXP) {
+Rcpp::List reFitF(const std::vector<double>& yVec, const std::vector<double>& kVec, const std::vector<double>& xVec, const int32_t& d, const int32_t& Ngen);
+RcppExport SEXP _GWAlikeMeth_reFitF(SEXP yVecSEXP, SEXP kVecSEXP, SEXP xVecSEXP, SEXP dSEXP, SEXP NgenSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::vector<double>& >::type yVec(yVecSEXP);
     Rcpp::traits::input_parameter< const std::vector<double>& >::type kVec(kVecSEXP);
-    Rcpp::traits::input_parameter< const std::vector<double>& >::type xvec(xvecSEXP);
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type xVec(xVecSEXP);
     Rcpp::traits::input_parameter< const int32_t& >::type d(dSEXP);
     Rcpp::traits::input_parameter< const int32_t& >::type Ngen(NgenSEXP);
-    rcpp_result_gen = Rcpp::wrap(reFitF(yVec, kVec, xvec, d, Ngen));
+    rcpp_result_gen = Rcpp::wrap(reFitF(yVec, kVec, xVec, d, Ngen));
     return rcpp_result_gen;
 END_RCPP
 }
 // reFitRF
-Rcpp::List reFitRF(const std::vector<double>& yVec, const std::vector<double>& kVec, const std::vector<int32_t>& repFac, const std::vector<double>& xvec, const int32_t& d, const int32_t& Ngen);
-RcppExport SEXP _GWAlikeMeth_reFitRF(SEXP yVecSEXP, SEXP kVecSEXP, SEXP repFacSEXP, SEXP xvecSEXP, SEXP dSEXP, SEXP NgenSEXP) {
+Rcpp::List reFitRF(const std::vector<double>& yVec, const std::vector<double>& kVec, const std::vector<int32_t>& repFac, const std::vector<double>& xVec, const int32_t& d, const int32_t& Ngen);
+RcppExport SEXP _GWAlikeMeth_reFitRF(SEXP yVecSEXP, SEXP kVecSEXP, SEXP repFacSEXP, SEXP xVecSEXP, SEXP dSEXP, SEXP NgenSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::vector<double>& >::type yVec(yVecSEXP);
     Rcpp::traits::input_parameter< const std::vector<double>& >::type kVec(kVecSEXP);
     Rcpp::traits::input_parameter< const std::vector<int32_t>& >::type repFac(repFacSEXP);
-    Rcpp::traits::input_parameter< const std::vector<double>& >::type xvec(xvecSEXP);
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type xVec(xVecSEXP);
     Rcpp::traits::input_parameter< const int32_t& >::type d(dSEXP);
     Rcpp::traits::input_parameter< const int32_t& >::type Ngen(NgenSEXP);
-    rcpp_result_gen = Rcpp::wrap(reFitRF(yVec, kVec, repFac, xvec, d, Ngen));
+    rcpp_result_gen = Rcpp::wrap(reFitRF(yVec, kVec, repFac, xVec, d, Ngen));
     return rcpp_result_gen;
 END_RCPP
 }

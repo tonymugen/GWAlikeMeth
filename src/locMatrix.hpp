@@ -446,7 +446,7 @@ namespace BayesicSpace {
 		 * \param[in] transA whether \f$A\f$ should be transposed
 		 * \param[in] alpha the \f$\alpha\f$ constant
 		 * \param[in] A matrix \f$A\f$
-		 * \param[in] transB whether \f$A\f$ should be transposed
+		 * \param[in] transB whether \f$B\f$ should be transposed
 		 * \param[in] beta the \f$\beta\f$ constant
 		 * \param[in,out] C the result \f$C\f$ matrix
 		 *

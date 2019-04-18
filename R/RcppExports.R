@@ -38,8 +38,8 @@ reFitR <- function(yVec, kVec, repFac, d, Ngen) {
 #' @param d number of traits
 #' @param Ngen number of genotypes
 #' @export
-reFitF <- function(yVec, kVec, xvec, d, Ngen) {
-    .Call(`_GWAlikeMeth_reFitF`, yVec, kVec, xvec, d, Ngen)
+reFitF <- function(yVec, kVec, xVec, d, Ngen) {
+    .Call(`_GWAlikeMeth_reFitF`, yVec, kVec, xVec, d, Ngen)
 }
 
 #' Random effects fit with fixed effects and replication
@@ -53,8 +53,8 @@ reFitF <- function(yVec, kVec, xvec, d, Ngen) {
 #' @param d number of traits
 #' @param Ngen number of genotypes
 #' @export
-reFitRF <- function(yVec, kVec, repFac, xvec, d, Ngen) {
-    .Call(`_GWAlikeMeth_reFitRF`, yVec, kVec, repFac, xvec, d, Ngen)
+reFitRF <- function(yVec, kVec, repFac, xVec, d, Ngen) {
+    .Call(`_GWAlikeMeth_reFitRF`, yVec, kVec, repFac, xVec, d, Ngen)
 }
 
 #' Simple GWA
@@ -123,7 +123,7 @@ gwaRF.internal <- function(yVec, kVec, repFac, xVec, snps, d, Ngen, nThr) {
 
 #' Simple GWA with FDR
 #'
-#' Fits a random-effects model (with no fixed effect covariates other than the intercept and no replication) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. If the number of threads is set to 0, the number is picked automatically.
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept and no replication) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \eqn{-\log_{10}p} values. Uses this distribution to estimate per-SNP empirical false discovery rates. If the number of threads is set to 0, the number is picked automatically.
 #'
 #' @param yVec vectorized matrix of phenotypes
 #' @param kVec vectorized relationship matrix
@@ -139,7 +139,7 @@ gwaFDR.internal <- function(yVec, kVec, snps, d, Ngen, nPer, nThr) {
 
 #' GWA with FDR and replication
 #'
-#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \eqn{-\log_{10}p} values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
 #'
 #' @param yVec vectorized matrix of phenotypes
 #' @param kVec vectorized relationship matrix
@@ -156,7 +156,7 @@ gwaFDRR.internal <- function(yVec, kVec, repFac, snps, d, Ngen, nPer, nThr) {
 
 #' GWA with FDR and fixed effects
 #'
-#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \eqn{-\log_{10}p} values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
 #'
 #' @param yVec vectorized matrix of phenotypes
 #' @param kVec vectorized relationship matrix
@@ -173,7 +173,7 @@ gwaFDRF.internal <- function(yVec, kVec, xVec, snps, d, Ngen, nPer, nThr) {
 
 #' GWA with FDR, replication, and fixed effects
 #'
-#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
+#' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \eqn{-\log_{10}p} values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
 #'
 #' @param yVec vectorized matrix of phenotypes
 #' @param kVec vectorized relationship matrix

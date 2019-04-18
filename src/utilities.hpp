@@ -23,14 +23,12 @@
 #include <utility>
 #include <limits>
 #include <cmath>
-#include <iostream>
+#include <cstdint> // for uint64_t
 #include <stack>
 
 using std::vector;
 using std::swap;
 using std::numeric_limits;
-using std::endl;
-using std::cerr;
 using std::signbit;
 using std::stack;
 
@@ -51,9 +49,9 @@ namespace BayesicSpace {
 	 */
 	void swapXOR(uint64_t &i, uint64_t &j){
 		if (&i != &j) { // no move needed if this is actually the same variable
-			i ^= j;
-			j ^= i;
-			i ^= j;
+			i= j;
+			j= i;
+			i= j;
 		}
 	}
 	/** \brief Swap to `in64_t` values
@@ -65,9 +63,9 @@ namespace BayesicSpace {
 	 */
 	void swapXOR(int64_t &i, int64_t &j){
 		if (&i != &j) { // no move needed if this is actually the same variable
-			i ^= j;
-			j ^= i;
-			i ^= j;
+			i= j;
+			j= i;
+			i= j;
 		}
 	}
 	/** \brief Swap to `uint32_t` values
@@ -79,9 +77,9 @@ namespace BayesicSpace {
 	 */
 	void swapXOR(uint32_t &i, uint32_t &j){
 		if (&i != &j) { // no move needed if this is actually the same variable
-			i ^= j;
-			j ^= i;
-			i ^= j;
+			i= j;
+			j= i;
+			i= j;
 		}
 	}
 	/** \brief Swap to `int32_t` values
@@ -93,9 +91,9 @@ namespace BayesicSpace {
 	 */
 	void swapXOR(int32_t &i, int32_t &j){
 		if (&i != &j) { // no move needed if this is actually the same variable
-			i ^= j;
-			j ^= i;
-			i ^= j;
+			i= j;
+			j= i;
+			i= j;
 		}
 	}
 	/** \brief Mean of a C array
@@ -228,8 +226,7 @@ namespace BayesicSpace {
 			candB += 100.0; // maybe just unlucky; change candB
 			fb = func(candB);
 			if (fabs(fa - fb) < 1.001*BS_EPS) { // now for sure there is a problem
-				cerr << "ERROR: function does not change over the candidate interval: f(" << candA << ") = " << fa << "; f(" << candB << ") = " << fb << " when trying to bracket the maximum" << endl;
-				exit(1);
+				throw("ERROR: function does not change over the candidate interval");
 			}
 		}
 		// want to keep going uphill, so reverse order if b takes us down
@@ -306,8 +303,8 @@ namespace BayesicSpace {
 	template<class T>
 	void maximizer(T &func, const double &startX, double &xMax, double &fMax){
 		const double tol         = 1.001 * sqrt(BS_EPS); // set the tolerance just above the theoretical limit
-		const unsigned int ITMAX = 1000;              // maximum number of iterations
-		const double CGOLD       = 0.3819660;         // golden ratio for when we abandon parabolic interpolation
+		const unsigned int ITMAX = 1000;                 // maximum number of iterations
+		const double CGOLD       = 0.3819660;            // golden ratio for when we abandon parabolic interpolation
 		const double ZEPS        = 1e-3 * BS_EPS;        // small number to protect against numerical problems when the maximum is zero and we are trying to achieve a certain fractional accuracy
 
 		// misc. parameters; named the same as the ones in Numerical Recipes Chapter 10.3
@@ -420,7 +417,6 @@ namespace BayesicSpace {
 		if (iter + 1 >= ITMAX) {
 			xMax = x;
 			fMax = nan("");
-			cerr << "WARNING: maximize() did not converge after " << ITMAX << " iterations. Interval achieved: " << fabs(x - xm) << " is larger than tolerance " << tol2 - 0.5*(b-a) << endl;
 
 		}
 	}
@@ -640,7 +636,7 @@ namespace BayesicSpace {
 	}
 	/** Quicksort
 	 *
-	 * This function implements the Quicksort algorithm, taking the Numerical Recipes implementation as a base. It re-arranges the indexes in the output vector rather than move around the elements of the target vector. The output index must be the same size as the target (this is checked and exception thown if the condidition is not met). The output index is initialized with the correct index values. 
+	 * This function implements the Quicksort algorithm, taking the Numerical Recipes implementation as a base. It re-arranges the indexes in the output vector rather than move around the elements of the target vector. The output index must be the same size as the target (this is checked and exception thown if the condidition is not met). The output index is initialized with the correct index values.
 	 *
 	 * \param[in] target vector to be sorted
 	 * \param[in] beg index of the first element
@@ -658,7 +654,7 @@ namespace BayesicSpace {
 		} else if (target.size() != outIdx.size()) {
 			throw("Target and output vectors must be of the same size in quickSort()");
 		}
-		
+
 		for (size_t i = beg; i < end; i++) {
 			outIdx[i] = i;
 		}
@@ -703,11 +699,11 @@ namespace BayesicSpace {
 					do {
 						i++;
 					} while(target[ outIdx[i] ] < target[ ip ]); // scan forward to find element > pivot
-					
-					do { 
+
+					do {
 						j--;
 					} while(target[ outIdx[j] ] > target[ ip ]); // scan backwards to find element < pivot
-					if (j < i) { // stop the scans if the indexes crossed 
+					if (j < i) { // stop the scans if the indexes crossed
 						break;
 					}
 					swapXOR(outIdx[i], outIdx[j]); // exchange elements unless the indexes have crossed

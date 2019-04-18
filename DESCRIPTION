@@ -6,6 +6,11 @@ Date: 2018-12-19
 Author: Tony Greenberg
 Maintainer: Tony Greenberg <info@bayesicresearch.org>
 Description: Efficient likelihood methods for genome-wide associations, including mixed models and multithreading.
-License: BSD-3-Clause
+License: BSD_3_Clause
 Imports: Rcpp (>= 1.0.0)
 LinkingTo: Rcpp
+ByteCompile: yes
+NeedsCompilation: yes
+OS_type: unix
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 6.1.1

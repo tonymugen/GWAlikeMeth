@@ -28,7 +28,6 @@
  *
  */
 
-#include <iostream>
 #include <vector>
 #include <cmath>
 #include <thread>
@@ -36,8 +35,6 @@
 #include "likeMeth.hpp"
 #include "utilities.hpp"
 
-using std::cerr;
-using std::endl;
 using std::vector;
 using std::thread;
 
@@ -75,21 +72,30 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		ZKZt.setElem(ii, ii, tmp);
 	}
 
-	Matrix SHS; // SHS matrix (equation 5 of Kang et al.)
-	S.symm('l', 'r', 1.0, ZKZt, 0.0, SHS);
-	SHS.symm('l', 'r', 1.0, S, 0.0, u_); // u is now SHS
+	Matrix Uf;         // U_F (eigenvectors of ZKZ') from eq. 4 of Kang et al.
+	vector<double> xi; // xi (eigenvalues of ZKZ') from eq. 4 of Kang et al.
+	ZKZt.eigenSafe('l', Uf, xi);
+
+	for (auto &x : xi) {
+		x -= offset;
+		if (x <= 1e-10) {
+			x = 0.0;
+		}
+	}
+
+	Matrix SHS;                           // SHS matrix (equation 5 of Kang et al.)
+	S.symm('l', 'r', 1.0, ZKZt, 0.0, u_); // u_ now SZKZ'
+	u_.symm('l', 'r', 1.0, S, 0.0, SHS);
 
 	vector<double> lam;
 	S.resize(1, 1);
-	u_.eigen('l', u_.getNcols() - 1, S, lam); // S now U(SHS)
+	SHS.eigen('l', SHS.getNcols() - 1, S, lam); // S now U(SHS)
 
-	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
-		if ((*lamIt) - offset <= 1e-10) {
-			(*lamIt) = 0.0;
-		} else {
-			(*lamIt) -= offset;
+	for (auto &l : lam) {
+		l -= offset;
+		if (l <= 1e-10) {
+			l = 0.0;
 		}
-
 	}
 
 	Matrix Eta;
@@ -103,25 +109,24 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 
 	EmmREML reml(Eta, lam, 0);
 	SHS = Y_; // replace SHS with Y. SHS will be modified in the loop
-	vector<double> XtH(ZKZt.getNrows());
-	for (size_t ii = 0; ii < ZKZt.getNrows(); ii++) {
-		ZKZt.setElem(ii, ii, ZKZt.getElem(ii, ii) - offset);
-	}
+	vector<double> XtH(S.getNrows());
 
 	beta_ = Matrix(1, d);
 	for (size_t jCol = 0; jCol < Y_.getNcols(); jCol++) {
 		reml.setColID(jCol);
 		double fMax = 0.0;
 		maximizer(reml, 1e-6, delta_[jCol], fMax);
-
-		u_ = ZKZt; // replacing Zu with ZKZ'
-		for (size_t ii = 0; ii < u_.getNrows(); ii++) {
-			u_.setElem(ii, ii, ZKZt.getElem(ii, ii) + delta_[jCol]);
+		if (delta_[jCol] <= 1e-10) {
+			delta_[jCol] = 1e-10; // guard against under/overflow
 		}
-		u_.chol();
-		u_.cholInv();         // now H^{-1}
-		u_.colSums(XtH);      // X'H^{-1}, since X is a column of 1s (intercept)
-		double XtHX    = 0.0; // X'H^{-1}X
+
+		ZKZt = Uf; // replacing with U(H)
+		for (size_t i = 0; i < xi.size(); i++) {
+			ZKZt.colDivide(xi[i] + delta_[jCol], i);
+		}
+		Uf.gemm(false, 1.0, ZKZt, true, 0.0, u_); // u_ now H^+ (generalized inverse) = U (xi + delta)^{-1} U'
+		u_.colSums(XtH);                         // X'H^{-1}, since X is a column of 1s (intercept)
+		double XtHX    = 0.0;                    // X'H^{-1}X
 		double betaLoc = 0.0;
 		for (size_t iRow = 0; iRow < Y_.getNrows(); iRow++) {
 			XtHX    += XtH[iRow];

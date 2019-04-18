@@ -135,7 +135,7 @@ Rcpp::List reFitR(const std::vector<double> &yVec, const std::vector<double> &kV
 //' @param Ngen number of genotypes
 //' @export
 //[[Rcpp::export(name="reFitF")]]
-Rcpp::List reFitF(const std::vector<double> &yVec, const std::vector<double> &kVec, const std::vector<double> &xvec, const int32_t &d, const int32_t &Ngen){
+Rcpp::List reFitF(const std::vector<double> &yVec, const std::vector<double> &kVec, const std::vector<double> &xVec, const int32_t &d, const int32_t &Ngen){
 	if(d <= 0){
 		Rcpp::stop("The number of traits must be positive");
 	} else if (Ngen <= 0) {
@@ -143,7 +143,7 @@ Rcpp::List reFitF(const std::vector<double> &yVec, const std::vector<double> &kV
 	}
 
 	try {
-		BayesicSpace::MixedModel model(yVec, kVec, xvec, d, Ngen);
+		BayesicSpace::MixedModel model(yVec, kVec, xVec, d, Ngen);
 
 		BayesicSpace::Matrix U;    // matrix of random effects
 		BayesicSpace::Matrix B;    // matrix of intercepts (no other fixed effects)
@@ -175,7 +175,7 @@ Rcpp::List reFitF(const std::vector<double> &yVec, const std::vector<double> &kV
 //' @param Ngen number of genotypes
 //' @export
 //[[Rcpp::export(name="reFitRF")]]
-Rcpp::List reFitRF(const std::vector<double> &yVec, const std::vector<double> &kVec, const std::vector<int32_t> &repFac, const std::vector<double> &xvec, const int32_t &d, const int32_t &Ngen){
+Rcpp::List reFitRF(const std::vector<double> &yVec, const std::vector<double> &kVec, const std::vector<int32_t> &repFac, const std::vector<double> &xVec, const int32_t &d, const int32_t &Ngen){
 	if(d <= 0){
 		Rcpp::stop("The number of traits must be positive");
 	} else if (Ngen <= 0) {
@@ -190,7 +190,7 @@ Rcpp::List reFitRF(const std::vector<double> &yVec, const std::vector<double> &k
 		fixedFac.push_back(static_cast<size_t>(i-1));
 	}
 	try {
-		BayesicSpace::MixedModel model(yVec, kVec, fixedFac, xvec, d, Ngen, yVec.size()/d);
+		BayesicSpace::MixedModel model(yVec, kVec, fixedFac, xVec, d, Ngen, yVec.size()/d);
 
 		BayesicSpace::Matrix U;    // matrix of random effects
 		BayesicSpace::Matrix B;    // matrix of intercepts (no other fixed effects)
@@ -406,7 +406,7 @@ Rcpp::List gwaRF(const std::vector<double> &yVec, const std::vector<double> &kVe
 
 //' Simple GWA with FDR
 //'
-//' Fits a random-effects model (with no fixed effect covariates other than the intercept and no replication) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. If the number of threads is set to 0, the number is picked automatically.
+//' Fits a random-effects model (with no fixed effect covariates other than the intercept and no replication) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \eqn{-\log_{10}p} values. Uses this distribution to estimate per-SNP empirical false discovery rates. If the number of threads is set to 0, the number is picked automatically.
 //'
 //' @param yVec vectorized matrix of phenotypes
 //' @param kVec vectorized relationship matrix
@@ -455,7 +455,7 @@ Rcpp::List gwaFDR(const std::vector<double> &yVec, const std::vector<double> &kV
 
 //' GWA with FDR and replication
 //'
-//' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
+//' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \eqn{-\log_{10}p} values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
 //'
 //' @param yVec vectorized matrix of phenotypes
 //' @param kVec vectorized relationship matrix
@@ -512,7 +512,7 @@ Rcpp::List gwaFDRR(const std::vector<double> &yVec, const std::vector<double> &k
 
 //' GWA with FDR and fixed effects
 //'
-//' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
+//' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \eqn{-\log_{10}p} values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
 //'
 //' @param yVec vectorized matrix of phenotypes
 //' @param kVec vectorized relationship matrix
@@ -562,7 +562,7 @@ Rcpp::List gwaFDRF(const std::vector<double> &yVec, const std::vector<double> &k
 
 //' GWA with FDR, replication, and fixed effects
 //'
-//' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \f$ -\log_{10}p \f$ values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
+//' Fits a random-effects model (with no fixed effect covariates other than the intercept) and does GWA on the provided SNPs. Operates on any number of traits at once, but treats them as independent. Permutes the rows of the trait matrix to generate a null distribution of \eqn{-\log_{10}p} values. Uses this distribution to estimate per-SNP empirical false discovery rates. The number of threads is set automatically if the number provided is 0.
 //'
 //' @param yVec vectorized matrix of phenotypes
 //' @param kVec vectorized relationship matrix

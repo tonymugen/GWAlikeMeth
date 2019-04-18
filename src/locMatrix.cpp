@@ -1801,6 +1801,9 @@ void Matrix::dropLeftCols(const size_t &newFirst){
 		throw("ERROR: New first column index is past the last column in dropLeftCols()");
 	}
 #endif
+	if (newFirst == 0) {
+		return;
+	}
 	double *dataCopy = new double[Nrow_ * Ncol_];
 	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
 	delete [] data_;
@@ -1816,6 +1819,9 @@ void Matrix::dropRightCols(const size_t &newLast){
 		throw("ERROR: New last column index is past the last column in dropRightCols()");
 	}
 #endif
+	if (newLast == (Ncol_ - 1)) {
+		return;
+	}
 	double *dataCopy = new double[Nrow_ * Ncol_];
 	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
 	delete [] data_;
@@ -1831,6 +1837,9 @@ void Matrix::dropTopRows(const size_t &newTop){
 		throw("ERROR: New first row index is past the last row in dropTopRows()");
 	}
 #endif
+	if (newTop == 0) {
+		return;
+	}
 	double *dataCopy = new double[Nrow_ * Ncol_];
 	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
 	delete [] data_;
@@ -1851,6 +1860,9 @@ void Matrix::dropBottomRows(const size_t &newBottom){
 		throw("ERROR: New last row index is past the last row in dropBottomRows()");
 	}
 #endif
+	if (newBottom == (Nrow_ -1)) {
+		return;
+	}
 	double *dataCopy = new double[Nrow_ * Ncol_];
 	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
 	delete [] data_;
