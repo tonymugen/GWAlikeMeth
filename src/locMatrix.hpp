@@ -292,6 +292,19 @@ namespace BayesicSpace {
 		 *
 		 */
 		void eigenSafe(const char &tri, Matrix &U, vector<double> &lam);
+		/** \brief Some eigenvalues and vectors of a symmetric matrix ("safe")
+		 *
+		 * Computes the top _n_ eigenvectors and values of a symmetric matrix. Interface to the _DSYEVR_ LAPACK routine. This routine is recommended as the fastest (especially for smaller matrices) in LAPACK benchmarks. It is assumed that the current object is symmetric. It is only checked for being square.
+		 * The data are preserved, leading to some loss of efficiency compared to eigen(). If the dimensions of the output matrix and vector are smaller than necessary, they are resized. If they are larger than necessary, only the first \f$N^2\f$ and \f$N\f$ elements are used, respectively.
+		 * For the matrix this means that the first \f$N\f$ columns are used if the number of rows is the same as that in the current object. Otherwise, the columns are wrapped around.
+		 *
+		 * \param[in] tri triangle ID ('u' for upper or 'l' for lower)
+		 * \param[in] n number of largest eigenvalues to compute
+		 * \param[out] U matrix of eigenvectors
+		 * \param[out] lam vector of eigenvalues in ascending order
+		 *
+		 */
+		void eigenSafe(const char &tri, const size_t &n, Matrix &U, vector<double> &lam);
 
 		/** \brief In-place multiply by a design matrix from the left
 		 *

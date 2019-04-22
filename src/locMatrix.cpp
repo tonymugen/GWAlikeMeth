@@ -713,7 +713,7 @@ void Matrix::eigenSafe(const char &tri, Matrix &U, vector<double> &lam){
 	double *dataCopy = new double[Nrow_ * Ncol_];
 	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
 
-	dsyevr_(&jobz, &range, &uplo, &N, data_, &lda, &vl, &vu, &il, &iu, &abstol, &M, lam.data(), U.data_, &ldz, isuppz.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
+	dsyevr_(&jobz, &range, &uplo, &N, dataCopy, &lda, &vl, &vu, &il, &iu, &abstol, &M, lam.data(), U.data_, &ldz, isuppz.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
 
 	lwork  = work[0];
 	work.resize(static_cast<size_t>(lwork), 0.0);
@@ -721,9 +721,8 @@ void Matrix::eigenSafe(const char &tri, Matrix &U, vector<double> &lam){
 	iwork.resize(static_cast<size_t>(liwork), 0);
 
 	// run the actual estimation
-	dsyevr_(&jobz, &range, &uplo, &N, data_, &lda, &vl, &vu, &il, &iu, &abstol, &M, lam.data(), U.data_, &ldz, isuppz.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
+	dsyevr_(&jobz, &range, &uplo, &N, dataCopy, &lda, &vl, &vu, &il, &iu, &abstol, &M, lam.data(), U.data_, &ldz, isuppz.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
 
-	memcpy(data_, dataCopy, (Nrow_ * Ncol_)*sizeof(double));
 	delete [] dataCopy;
 
 	// set tiny eigenvalues to exactly zero
@@ -734,6 +733,88 @@ void Matrix::eigenSafe(const char &tri, Matrix &U, vector<double> &lam){
 	}
 
 }
+
+void Matrix::eigenSafe(const char &tri, const size_t &n, Matrix &U, vector<double> &lam){
+#ifndef LMRG_CHECK_OFF
+	if (Nrow_ != Ncol_) {
+		throw string("ERROR: matrix has to be at least square in eigen()");
+	}
+	if (Nrow_ < n) {
+		throw string("ERROR: the input number of eigenvalues greater than matrix dimensions");
+	}
+	if ( (Nrow_ == 0) || (Ncol_ == 0) ) {
+		throw string("ERROR: one of the dimensions is zero");
+	}
+#endif
+
+	if (Nrow_ == n) { // if we are doing all of them, just run regular eigen()
+		Matrix::eigenSafe(tri, U, lam);
+		return;
+	}
+
+
+	char jobz  = 'V'; // computing eigenvectors
+	char range = 'I'; // doing some of them
+	char uplo;
+	if (tri == 'u') {
+		uplo = 'U';
+	} else if (tri == 'l'){
+		uplo = 'L';
+	} else {
+		throw string("ERROR: unknown triangle indicator in eigen()");
+	}
+	int N   = static_cast<int>(Nrow_);
+	int lda = static_cast<int>(Nrow_);
+	// placeholder variables. Not referenced since we are computing a certain number of eigenvectors, not based on the values of the eigenvalues
+	double vl = 0.0;
+	double vu = 0.0;
+	int il = N - static_cast<int>(n) + 1; // looks like the count base-1
+	int iu = N; // do all the remaining eigenvalues
+
+	double abstol = sqrt(numeric_limits<double>::epsilon()); // absolute tolerance. Shouldn't be too close to epsilon since I don't need very precise estimation of small eigenvalues
+
+	int M   = iu - il + 1;
+	int ldz = N;
+
+	// test the output size and adjust if necessary
+	if ((Nrow_ > U.Nrow_) || (static_cast<size_t>(M) > U.Ncol_)) {
+		U.resize(Ncol_, static_cast<size_t>(M));
+	}
+	if (static_cast<size_t>(M) > lam.size()) {
+		lam.resize(static_cast<size_t>(M), 0.0);
+	}
+
+	vector<int> isuppz(2*M, 0);
+	vector<double> work(1, 0.0);        // workspace; size will be determined
+	int lwork = -1;          // to start; this lets us determine workspace size
+	vector<int> iwork(1, 0); // integer workspace; size to be calculated
+	int liwork = -1;         // to start; this lets us determine integer workspace size
+	int info = 0;
+
+	double *dataCopy = new double[Nrow_ * Ncol_];
+	memcpy(dataCopy, data_, (Nrow_ * Ncol_)*sizeof(double));
+
+	dsyevr_(&jobz, &range, &uplo, &N, dataCopy, &lda, &vl, &vu, &il, &iu, &abstol, &M, lam.data(), U.data_, &ldz, isuppz.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
+
+	lwork  = work[0];
+	work.resize(static_cast<size_t>(lwork), 0.0);
+	liwork = iwork[0];
+	iwork.resize(static_cast<size_t>(liwork), 0);
+
+	// run the actual estimation
+	dsyevr_(&jobz, &range, &uplo, &N, dataCopy, &lda, &vl, &vu, &il, &iu, &abstol, &M, lam.data(), U.data_, &ldz, isuppz.data(), work.data(), &lwork, iwork.data(), &liwork, &info);
+
+	delete [] dataCopy;
+
+	// set tiny eigenvalues to exactly zero
+	for (auto &l : lam) {
+		if (fabs(l) <= abstol) {
+			l = 0.0;
+		}
+	}
+
+}
+
 
 void Matrix::premultZ(const Matrix &Z){
 #ifndef LMRG_CHECK_OFF
