@@ -141,7 +141,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		SHS.setCol(jCol, XtH);
 
 	}
-	SHS.gemm(true, 1.0, K_, false, 0.0, u_); // replacing Zu with matrix of u
+	SHS.gemm(true, 1.0, K_, false, 0.0, u_);
 }
 
 MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N) : Y_{Matrix(yvec, N, d)}, K_{Matrix(kvec, Ngen, Ngen)}, delta_{vector<double>(d, 0.0)} {
@@ -172,21 +172,30 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		ZKZt.setElem(ii, ii, tmp);
 	}
 
-	Matrix SHS; // SHS matrix (equation 5 of Kang et al.)
-	S.symm('l', 'r', 1.0, ZKZt, 0.0, SHS);
-	SHS.symm('l', 'r', 1.0, S, 0.0, u_); // u is now SHS
+	Matrix Uf;                   // U_F (eigenvectors of ZKZ') from eq. 4 of Kang et al.
+	vector<double> xi;           // xi (eigenvalues of ZKZ') from eq. 4 of Kang et al.
+	ZKZt.eigenSafe('l', Uf, xi); // need all the eigenvalues
+
+	for (auto &x : xi) {
+		x -= offset;
+		if (x <= 1e-10) {
+			x = 0.0;
+		}
+	}
+
+	Matrix SHS;                           // SHS matrix (equation 5 of Kang et al.)
+	S.symm('l', 'r', 1.0, ZKZt, 0.0, u_); // u_ now SZKZ'
+	u_.symm('l', 'r', 1.0, S, 0.0, SHS);
 
 	vector<double> lam;
 	S.resize(1, 1);
-	u_.eigen('l', u_.getNcols() - 1, S, lam); // S now U(SHS)
+	SHS.eigen('l', SHS.getNcols() - 1, S, lam); // S now U(SHS)
 
-	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
-		if ((*lamIt) - offset <= 1e-10) {
-			(*lamIt) = 0.0;
-		} else {
-			(*lamIt) -= offset;
+	for (auto &l : lam) {
+		l -= offset;
+		if (l <= 1e-10) {
+			l = 0.0;
 		}
-
 	}
 
 	Matrix Eta;
@@ -201,9 +210,6 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 	EmmREML reml(Eta, lam, 0);
 	SHS = Y_; // replace SHS with Y. SHS will be modified in the loop
 	vector<double> XtH(ZKZt.getNrows());
-	for (size_t ii = 0; ii < ZKZt.getNrows(); ii++) {
-		ZKZt.setElem(ii, ii, ZKZt.getElem(ii, ii) - offset);
-	}
 
 	beta_ = Matrix(1, d);
 	for (size_t jCol = 0; jCol < Y_.getNcols(); jCol++) {
@@ -211,12 +217,15 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		double fMax = 0.0;
 		maximizer(reml, 1e-6, delta_[jCol], fMax);
 
-		u_ = ZKZt; // replacing Zu with ZKZ'
-		for (size_t ii = 0; ii < u_.getNrows(); ii++) {
-			u_.setElem(ii, ii, ZKZt.getElem(ii, ii) + delta_[jCol]);
+		if (delta_[jCol] <= 1e-10) {
+			delta_[jCol] = 1e-10; // guard against under/overflow
 		}
-		u_.chol();
-		u_.cholInv();         // now H^{-1}
+
+		ZKZt = Uf; // replacing with U(H)
+		for (size_t i = 0; i < xi.size(); i++) {
+			ZKZt.colDivide(xi[i] + delta_[jCol], i);
+		}
+		Uf.gemm(false, 1.0, ZKZt, true, 0.0, u_); // u_ now H^+ (generalized inverse) = U (xi + delta)^{-1} U'
 		u_.colSums(XtH);      // X'H^{-1}, since X is a column of 1s (intercept)
 		double XtHX    = 0.0; // X'H^{-1}X
 		double betaLoc = 0.0;
@@ -233,7 +242,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		SHS.setCol(jCol, XtH);
 
 	}
-	SHS.gemm(true, 1.0, ZK, false, 0.0, u_); // replacing Zu with matrix of u
+	SHS.gemm(true, 1.0, ZK, false, 0.0, u_);
 }
 
 MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<double> &xvec, const size_t &d, const size_t &Ngen) : Y_{Matrix(yvec, Ngen, d)}, K_{Matrix(kvec, Ngen, Ngen)}, X_{Matrix(xvec, Ngen, xvec.size()/Ngen)}, delta_{vector<double>(d, 0.0)} {
@@ -274,21 +283,31 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		ZKZt.setElem(ii, ii, tmp);
 	}
 
-	S.symm('l', 'r', 1.0, ZKZt, 0.0, SHS);
-	SHS.symm('l', 'r', 1.0, S, 0.0, u_); // u is now SHS
+	Matrix Uf;         // U_F (eigenvectors of ZKZ') from eq. 4 of Kang et al.
+	vector<double> xi; // xi (eigenvalues of ZKZ') from eq. 4 of Kang et al.
+	ZKZt.eigenSafe('l', Uf, xi);
+
+	for (auto &x : xi) {
+		x -= offset;
+		if (x <= 1e-10) {
+			x = 0.0;
+		}
+	}
+
+	S.symm('l', 'r', 1.0, ZKZt, 0.0, u_);
+	u_.symm('l', 'r', 1.0, S, 0.0, SHS);
 
 	vector<double> lam;
 	S.resize(1, 1);
-	u_.eigen('l', u_.getNcols() - XwIcpt.getNcols(), S, lam); // S now U(SHS)
+	SHS.eigen('l', SHS.getNcols() - XwIcpt.getNcols(), S, lam); // S now U(SHS)
 
-	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
-		if ((*lamIt) - offset <= 1e-10) {
-			(*lamIt) = 0.0;
-		} else {
-			(*lamIt) -= offset;
+	for (auto &l : lam) {
+		l -= offset;
+		if (l <= 1e-10) {
+			l = 0.0;
 		}
-
 	}
+	
 	Matrix Eta;
 	Y_.gemm(true, 1.0, S, false, 0.0, Eta); // U'Y
 
@@ -299,23 +318,23 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 	}
 
 	EmmREML reml(Eta, lam, 0);
-	SHS = Y_; // replace SHS with Y. SHS will be modified in the loop
-	for (size_t ii = 0; ii < ZKZt.getNrows(); ii++) {
-		ZKZt.setElem(ii, ii, ZKZt.getElem(ii, ii) - offset);
-	}
+	SHS = Y_;                // replace SHS with Y. SHS will be modified in the loop
 	vector<double> betaHat;
-	Matrix xhx;  // X'H^{-1}X
+	Matrix xhx;              // X'H^{-1}X
 	for (size_t jCol = 0; jCol < Y_.getNcols(); jCol++) {
 		reml.setColID(jCol);
 		double fMax = 0.0;
 		maximizer(reml, 1e-6, delta_[jCol], fMax);
 
-		u_ = ZKZt; // replacing Zu with ZKZ'
-		for (size_t ii = 0; ii < u_.getNrows(); ii++) {
-			u_.setElem(ii, ii, ZKZt.getElem(ii, ii) + delta_[jCol]);
+		if (delta_[jCol] <= 1e-10) {
+			delta_[jCol] = 1e-10; // guard against under/overflow
 		}
-		u_.chol();
-		u_.cholInv();          // now H^{-1}
+
+		ZKZt = Uf; // replacing with U(H)
+		for (size_t i = 0; i < xi.size(); i++) {
+			ZKZt.colDivide(xi[i] + delta_[jCol], i);
+		}
+		Uf.gemm(false, 1.0, ZKZt, true, 0.0, u_); // u_ now H^+ (generalized inverse) = U (xi + delta)^{-1} U'
 
 		XwIcpt.symm('l', 'l', 1.0, u_, 0.0, S);        // S now H^{-1}X
 		S.gemm(true, 1.0, XwIcpt, false, 0.0, xhx);    // xhx =  X'H^{-1}X
@@ -323,7 +342,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		xhx.cholInv();                                 // xhx now (X'H^{-1}X)^{-1}
 		S.gemc(true, 1.0, Y_, jCol, 0.0, betaHat);     // betaHat = X'H^{-1}Y[,jCol]
 		beta_.setCol(jCol, betaHat);
-		xhx.symc('l', 1.0, beta_, jCol, 0.0, betaHat);  // betaHat = (X'H^{-1}X)^{-1}X'H^{-1}Y[,jCol]
+		xhx.symc('l', 1.0, beta_, jCol, 0.0, betaHat); // betaHat = (X'H^{-1}X)^{-1}X'H^{-1}Y[,jCol]
 		beta_.setCol(jCol, betaHat);
 		XwIcpt.gemc(false, 1.0, beta_, jCol, 0.0, betaHat); // betaHat now Xbeta; length nrow(X)
 
@@ -336,7 +355,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		SHS.setCol(jCol, betaHat);
 		betaHat.resize(0);                            // essential for proper re-use at the top of the loop
 	}
-	SHS.gemm(true, 1.0, K_, false, 0.0, u_); // replacing Zu with matrix of u
+	SHS.gemm(true, 1.0, K_, false, 0.0, u_);
 }
 
 MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const vector<double> &xvec, const size_t &d, const size_t &Ngen, const size_t &N) : Y_{Matrix(yvec, N, d)}, K_{Matrix(kvec, Ngen, Ngen)}, X_{Matrix(xvec, N, xvec.size()/N)}, delta_{vector<double>(d, 0.0)} {
@@ -391,21 +410,31 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		ZKZt.setElem(ii, ii, tmp);
 	}
 
-	S.symm('l', 'r', 1.0, ZKZt, 0.0, SHS);
-	SHS.symm('l', 'r', 1.0, S, 0.0, u_); // u is now SHS
+	Matrix Uf;                   // U_F (eigenvectors of ZKZ') from eq. 4 of Kang et al.
+	vector<double> xi;           // xi (eigenvalues of ZKZ') from eq. 4 of Kang et al.
+	ZKZt.eigenSafe('l', Uf, xi); // need all the eigenvalues
+
+	for (auto &x : xi) {
+		x -= offset;
+		if (x <= 1e-10) {
+			x = 0.0;
+		}
+	}
+
+	S.symm('l', 'r', 1.0, ZKZt, 0.0, u_);
+	u_.symm('l', 'r', 1.0, S, 0.0, SHS);
 
 	vector<double> lam;
 	S.resize(1, 1);
-	u_.eigen('l', u_.getNcols() - XwIcpt.getNcols(), S, lam); // S now U(SHS)
+	SHS.eigen('l', SHS.getNcols() - XwIcpt.getNcols(), S, lam); // S now U(SHS)
 
-	for (auto lamIt = lam.begin(); lamIt != lam.end(); ++lamIt) {
-		if ((*lamIt) - offset <= 1e-10) {
-			(*lamIt) = 0.0;
-		} else {
-			(*lamIt) -= offset;
+	for (auto &l : lam) {
+		l -= offset;
+		if (l <= 1e-10) {
+			l = 0.0;
 		}
-
 	}
+	
 	Matrix Eta;
 	Y_.gemm(true, 1.0, S, false, 0.0, Eta); // U'Y
 
@@ -417,9 +446,6 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 
 	EmmREML reml(Eta, lam, 0);
 	SHS = Y_; // replace SHS with Y. SHS will be modified in the loop
-	for (size_t ii = 0; ii < ZKZt.getNrows(); ii++) {
-		ZKZt.setElem(ii, ii, ZKZt.getElem(ii, ii) - offset);
-	}
 	vector<double> betaHat;
 	Matrix xhx;  // X'H^{-1}X
 	for (size_t jCol = 0; jCol < Y_.getNcols(); jCol++) {
@@ -427,12 +453,15 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		double fMax = 0.0;
 		maximizer(reml, 1e-6, delta_[jCol], fMax);
 
-		u_ = ZKZt; // replacing Zu with ZKZ'
-		for (size_t ii = 0; ii < u_.getNrows(); ii++) {
-			u_.setElem(ii, ii, ZKZt.getElem(ii, ii) + delta_[jCol]);
+		if (delta_[jCol] <= 1e-10) {
+			delta_[jCol] = 1e-10; // guard against under/overflow
 		}
-		u_.chol();
-		u_.cholInv();          // now H^{-1}
+
+		ZKZt = Uf; // replacing with U(H)
+		for (size_t i = 0; i < xi.size(); i++) {
+			ZKZt.colDivide(xi[i] + delta_[jCol], i);
+		}
+		Uf.gemm(false, 1.0, ZKZt, true, 0.0, u_); // u_ now H^+ (generalized inverse) = U (xi + delta)^{-1} U'
 
 		XwIcpt.symm('l', 'l', 1.0, u_, 0.0, S);        // S now H^{-1}X
 		S.gemm(true, 1.0, XwIcpt, false, 0.0, xhx);    // xhx =  X'H^{-1}X
@@ -453,7 +482,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 		SHS.setCol(jCol, betaHat);
 		betaHat.resize(0);                            // essential for proper re-use at the top of the loop
 	}
-	SHS.gemm(true, 1.0, ZK, false, 0.0, u_); // replacing Zu with matrix of u
+	SHS.gemm(true, 1.0, ZK, false, 0.0, u_);
 
 }
 
