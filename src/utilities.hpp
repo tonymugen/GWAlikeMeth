@@ -20,6 +20,7 @@
 #define utilities_hpp
 
 #include <vector>
+#include <string>
 #include <utility>
 #include <limits>
 #include <cmath>
@@ -27,6 +28,7 @@
 #include <stack>
 
 using std::vector;
+using std::string;
 using std::swap;
 using std::numeric_limits;
 using std::signbit;
@@ -49,9 +51,9 @@ namespace BayesicSpace {
 	 */
 	void swapXOR(uint64_t &i, uint64_t &j){
 		if (&i != &j) { // no move needed if this is actually the same variable
-			i= j;
-			j= i;
-			i= j;
+			i ^= j;
+			j ^= i;
+			i ^= j;
 		}
 	}
 	/** \brief Swap to `in64_t` values
@@ -63,9 +65,9 @@ namespace BayesicSpace {
 	 */
 	void swapXOR(int64_t &i, int64_t &j){
 		if (&i != &j) { // no move needed if this is actually the same variable
-			i= j;
-			j= i;
-			i= j;
+			i ^= j;
+			j ^= i;
+			i ^= j;
 		}
 	}
 	/** \brief Swap to `uint32_t` values
@@ -77,9 +79,9 @@ namespace BayesicSpace {
 	 */
 	void swapXOR(uint32_t &i, uint32_t &j){
 		if (&i != &j) { // no move needed if this is actually the same variable
-			i= j;
-			j= i;
-			i= j;
+			i ^= j;
+			j ^= i;
+			i ^= j;
 		}
 	}
 	/** \brief Swap to `int32_t` values
@@ -91,9 +93,9 @@ namespace BayesicSpace {
 	 */
 	void swapXOR(int32_t &i, int32_t &j){
 		if (&i != &j) { // no move needed if this is actually the same variable
-			i= j;
-			j= i;
-			i= j;
+			i ^= j;
+			j ^= i;
+			i ^= j;
 		}
 	}
 	/** \brief Mean of a C array
@@ -226,7 +228,7 @@ namespace BayesicSpace {
 			candB += 100.0; // maybe just unlucky; change candB
 			fb = func(candB);
 			if (fabs(fa - fb) < 1.001*BS_EPS) { // now for sure there is a problem
-				throw("ERROR: function does not change over the candidate interval");
+				throw string("ERROR: function does not change over the candidate interval");
 			}
 		}
 		// want to keep going uphill, so reverse order if b takes us down
@@ -592,13 +594,13 @@ namespace BayesicSpace {
 	 */
 	void shellSort(const vector<double> &target, const size_t &beg, const size_t &end, vector<size_t> &outIdx){
 		if (target.size() < end) {
-			throw("Target vector size smaller than end index in shellSort()");
+			throw string("Target vector size smaller than end index in shellSort()");
 		} else if (outIdx.size() < end) {
-			throw("Output vector size smaller than end index in shellSort()");
+			throw string("Output vector size smaller than end index in shellSort()");
 		} else if (end < beg) {
-			throw("End index smaller than beginning index in shellSort()");
+			throw string("End index smaller than beginning index in shellSort()");
 		} else if (target.size() != outIdx.size()) {
-			throw("Target and output vectors must be of the same size in shellSort()");
+			throw string("Target and output vectors must be of the same size in shellSort()");
 		}
 		// set up the initial output index values
 		//for (size_t i = beg; i < end; i++) {
@@ -616,13 +618,13 @@ namespace BayesicSpace {
 			const size_t bottom = beg + inc;
 			for (size_t iOuter = bottom; iOuter < end; iOuter++) { // outer loop of the insertion sort, going over the indexes
 				if (outIdx[iOuter] >= target.size()) {
-					throw("outIdx value out of bounds for target vector in shellSort()");
+					throw string("outIdx value out of bounds for target vector in shellSort()");
 				}
 				const size_t curInd = outIdx[iOuter]; // save the current value of the index
 				size_t jInner       = iOuter;
 				while (target[ outIdx[jInner - inc] ] > target[ curInd ]) {  // Straight insertion inner loop; looking for a place to insert the current value
 					if (outIdx[jInner-inc] >= target.size()) {
-						throw("outIdx value out of bounds for target vector in shellSort()");
+						throw string("outIdx value out of bounds for target vector in shellSort()");
 					}
 					outIdx[jInner] = outIdx[jInner-inc];
 					jInner        -= inc;
@@ -646,13 +648,13 @@ namespace BayesicSpace {
 	 */
 	void quickSort(const vector<double> &target, const size_t &beg, const size_t &end, vector<size_t> &outIdx){
 		if (target.size() < end) {
-			throw("Target vector size smaller than end index in quickSort()");
+			throw string("Target vector size smaller than end index in quickSort()");
 		} else if (outIdx.size() < end) {
-			throw("Output vector size smaller than end index in quickSort()");
+			throw string("Output vector size smaller than end index in quickSort()");
 		} else if (end < beg) {
-			throw("End index smaller than beginning index in quickSort()");
+			throw string("End index smaller than beginning index in quickSort()");
 		} else if (target.size() != outIdx.size()) {
-			throw("Target and output vectors must be of the same size in quickSort()");
+			throw string("Target and output vectors must be of the same size in quickSort()");
 		}
 
 		for (size_t i = beg; i < end; i++) {
