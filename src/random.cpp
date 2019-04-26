@@ -280,7 +280,7 @@ RanDraw::RanDraw(){
 }
 uint64_t RanDraw::sampleInt(const uint64_t &min, const uint64_t &max) const {
 	if (min >= max) {
-		throw "Lower bound not smaller than upper bound";
+		throw string("Lower bound not smaller than upper bound");
 	}
 	return min + this->ranInt()%(max - min);
 }

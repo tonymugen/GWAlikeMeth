@@ -34,6 +34,7 @@
 
 #include "likeMeth.hpp"
 #include "utilities.hpp"
+#include "random.hpp"
 
 using std::vector;
 using std::thread;
@@ -147,7 +148,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, const vector<size_t> &repFac, const size_t &d, const size_t &Ngen, const size_t &N) : Y_{Matrix(yvec, N, d)}, K_{Matrix(kvec, Ngen, Ngen)}, delta_{vector<double>(d, 0.0)} {
 
 	if(repFac.size() != N){
-		throw("ERROR: factor length not equal to the number of data points in MixedModel constructor");
+		throw string("ERROR: factor length not equal to the number of data points in MixedModel constructor");
 	}
 	Z_ = Matrix(0.0, N, Ngen);
 	for (size_t i = 0; i < repFac.size(); ++i) {
@@ -307,7 +308,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 			l = 0.0;
 		}
 	}
-	
+
 	Matrix Eta;
 	Y_.gemm(true, 1.0, S, false, 0.0, Eta); // U'Y
 
@@ -368,7 +369,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 	}
 
 	if(repFac.size() != N){
-		throw("ERROR: factor length not equal to the number of data points in MixedModel constructor");
+		throw string("ERROR: factor length not equal to the number of data points in MixedModel constructor");
 	}
 	Z_ = Matrix(0.0, N, Ngen);
 	for (size_t i = 0; i < repFac.size(); ++i) {
@@ -434,7 +435,7 @@ MixedModel::MixedModel(const vector<double> &yvec, const vector<double> &kvec, c
 			l = 0.0;
 		}
 	}
-	
+
 	Matrix Eta;
 	Y_.gemm(true, 1.0, S, false, 0.0, Eta); // U'Y
 
@@ -494,16 +495,24 @@ void MixedModel::hSq(vector<double> &out) const {
 }
 
 void MixedModel::gwa(uint32_t nThr){
+	Matrix XwIcpt(1.0, Y_.getNrows(), 1);
 	if(Z_.getNcols()){
 		// calculate within-line means of Y
 		Y_.premultZt(Z_);
 		vector<double> nLn; // number of replicates per line
 		Z_.colSums(nLn);
 		Y_.colDivide(nLn);
+		if (X_.getNrows() == Z_.getNrows()) {
+			Matrix Xtmp;
+			X_.premultZt(Z_, Xtmp);
+			Xtmp.colDivide(nLn);
+			XwIcpt.appendCol(Xtmp);
+		}
 	}
 
-	Matrix XwIcpt(1.0, Y_.getNrows(), 1);
-	XwIcpt.appendCol(X_);
+	if (XwIcpt.getNcols() > 1) {
+		XwIcpt.appendCol(X_);
+	}
 	Matrix uXb = u_;
 	beta_.gemm(false, 1.0, XwIcpt, false, 1.0, uXb); // u = u + Xbeta
 	Y_ = Y_ - uXb;
@@ -556,7 +565,7 @@ void MixedModel::gwa(const uint32_t &nPer, uint32_t nThr, vector<double> &fdr){
 	const uint64_t perOff        = Nsnp*nPer;
 
 	vector<double>plPval(lPval_->size()*nPer);
-	Matrix Ytmp(Y_);
+	const Matrix Ytmp(Y_);
 
 	for (uint32_t i = 0; i < nPer; i++) {
 		uint64_t nSNPsDone = 0;
@@ -676,7 +685,7 @@ void MixedModel::oneSNP_(const size_t &idx, const size_t &Nsnp){
 				XtY2.setElem(1, jTrt, XtY2.getElem(1, jTrt) + Y_.getElem(iLn, jTrt));
 			}
 		} else {
-			throw("ERROR: unknown genotype in the SNP table in snpReg()");
+			throw string("ERROR: unknown genotype in the SNP table in snpReg()");
 		}
 	}
 	XtY2.rowMultiply(2.0, 1);
@@ -750,7 +759,7 @@ void MixedModel::oneSNP_(const size_t &snpIdx, const size_t &perOff, const size_
 				XtY2.setElem(1, jTrt, XtY2.getElem(1, jTrt) + Y_.getElem(iLn, jTrt));
 			}
 		} else {
-			throw("ERROR: unknown genotype in the SNP table in snpReg()");
+			throw string("ERROR: unknown genotype in the SNP table in snpReg()");
 		}
 	}
 	XtY2.rowMultiply(2.0, 1);

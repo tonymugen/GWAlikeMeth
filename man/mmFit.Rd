@@ -11,7 +11,7 @@ mmFit(Y, K, X = NULL, repFactor = NULL)
 
 \item{K}{relationship matrix}
 
-\item{X}{fixed effect matrix (optional)}
+\item{X}{fixed effect matrix (optional, do not include the intercept)}
 
 \item{repFactor}{factor relating genotypes to replicates (optional)}
 }
@@ -19,5 +19,8 @@ mmFit(Y, K, X = NULL, repFactor = NULL)
 a list containing a matrix of random effects (named \code{ranef}), a matrix of fixed effects (including the intercept, named \code{fixef}), and a vector of heritability estimates (named \code{hSq})
 }
 \description{
-Fits a mixed model using a relationship matrix and possible fixed effects (in addition to the intercept) and replication. Calculates breeding values and narrow-sense heritability. If the relationship matrix is built from genotypes, these are genome-estimated breeding values (GEBV) and marker heritability. Multiple traits are processed together, but treated independently in the model. Missing phenotype, fixed effect, or replication data are not supported. The Y and X parameters will be converted to one-column matrices if their type is not \code{matrix}. An attempt will be made to do convert K to a matrix with reasonable dimensions of a non-\code{matrix} type is passed.
+Fits a mixed model using a relationship matrix and possible fixed effects (in addition to the intercept) and replication. Calculates breeding values and narrow-sense heritability. If the relationship matrix is built from genotypes, these are genome-estimated breeding values (GEBV) and marker heritability. Multiple traits are processed together, but treated independently in the model. Missing phenotype, fixed effect, or replication data are not supported. The Y and X parameters will be converted to one-column matrices if their type is not \code{matrix}. An attempt will be made to do convert K to a matrix with reasonable dimensions of a non-\code{matrix} type is passed. Do not include the intercept in the X matrix.
+}
+\references{
+\insertRef{kang08}{GWAlikeMeth}
 }
