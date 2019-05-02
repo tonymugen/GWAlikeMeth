@@ -2,5 +2,5 @@ This is an R package to perform genome-wide association studies on replicated da
 
 The SNP regression portion is multi-threaded. This is implemented so as not to interfere with multi-threading of linear algebra libraries used in R. More details can be found in the documentation.
 
-To install, make sure you have the `devtools` package on your system, and then run `install_github("https://github.com/tonymugen/GWAlikeMeth")`. It should work under any Unix-like system, but has not been tested under Windows.
+To install, make sure you have the `devtools` package on your system, and then run `install_github("tonymugen/GWAlikeMeth")`. It should work under any Unix-like system, but has not been tested under Windows.
 
