@@ -508,9 +508,7 @@ void MixedModel::gwa(uint32_t nThr){
 			Xtmp.colDivide(nLn);
 			XwIcpt.appendCol(Xtmp);
 		}
-	}
-
-	if (XwIcpt.getNcols() > 1) {
+	} else if (X_.getNcols() > 0) {
 		XwIcpt.appendCol(X_);
 	}
 	Matrix uXb = u_;
