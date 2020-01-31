@@ -42,7 +42,7 @@ namespace BayesicSpace {
 	/// Tiny value to guard agains underflow
 	const double BS_FPMIN = numeric_limits<double>::min()/BS_EPS;
 
-	/** \brief Swap to `uint64_t` values
+	/** \brief Swap two `uint64_t` values
 	 *
 	 * Uses the three XORs trick to swap two integers. Safe if the variables happen to refer to the same address.
 	 *
@@ -56,7 +56,7 @@ namespace BayesicSpace {
 			i ^= j;
 		}
 	}
-	/** \brief Swap to `in64_t` values
+	/** \brief Swap two `in64_t` values
 	 *
 	 * Uses the three XORs trick to swap two integers. Safe if the variables happen to refer to the same address.
 	 *
@@ -70,7 +70,7 @@ namespace BayesicSpace {
 			i ^= j;
 		}
 	}
-	/** \brief Swap to `uint32_t` values
+	/** \brief Swap two `uint32_t` values
 	 *
 	 * Uses the three XORs trick to swap two integers. Safe if the variables happen to refer to the same address.
 	 *
@@ -84,7 +84,7 @@ namespace BayesicSpace {
 			i ^= j;
 		}
 	}
-	/** \brief Swap to `int32_t` values
+	/** \brief Swap two `int32_t` values
 	 *
 	 * Uses the three XORs trick to swap two integers. Safe if the variables happen to refer to the same address.
 	 *
@@ -556,7 +556,7 @@ namespace BayesicSpace {
 		return res > 0.0 ? 1.0-res : -res;
 	}
 
-	/** \brief Regularized incolmplete Beta function
+	/** \brief Regularized incomplete Beta function
 	 *
 	 * Computes the regularized incomplete Beta function following the method in Numerical Recipes in C++.
 	 *
